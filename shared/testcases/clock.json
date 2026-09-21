@@ -1,0 +1,82 @@
+{
+  "formatVersion": 1,
+  "description": "Detection of a system clock that was set backwards. Winding the clock back is the cheapest way to extend an expired offline window, so the cache carries the highest time this installation has ever seen and refuses to believe anything far behind it.",
+  "notes": [
+    "The high-water mark lives INSIDE the encrypted cache. Beside it in a plain settings file it would be a two-line bypass.",
+    "The tolerance exists because honest clocks are wrong: a flat CMOS battery, a laptop crossing time zones, a virtual machine resuming from a snapshot. Those must not lock anybody out.",
+    "A clock ahead of the high-water mark is normal - that is just time passing."
+  ],
+  "toleranceHours": 24,
+  "cases": [
+    {
+      "id": "time-moves-forward",
+      "why": "The normal case. Nothing to report.",
+      "now": "2026-03-02T12:00:00+00:00",
+      "clockHighWater": "2026-03-01T09:00:00+00:00",
+      "expect": { "rolledBack": false, "newHighWater": "2026-03-02T12:00:00+00:00" }
+    },
+    {
+      "id": "no-high-water-yet",
+      "why": "First run. Whatever the clock says becomes the mark.",
+      "now": "2026-03-02T12:00:00+00:00",
+      "clockHighWater": null,
+      "expect": { "rolledBack": false, "newHighWater": "2026-03-02T12:00:00+00:00" }
+    },
+    {
+      "id": "small-drift-backwards-is-tolerated",
+      "why": "Two hours back is a time zone or an NTP correction, not fraud.",
+      "now": "2026-03-01T07:00:00+00:00",
+      "clockHighWater": "2026-03-01T09:00:00+00:00",
+      "expect": { "rolledBack": false, "newHighWater": "2026-03-01T09:00:00+00:00" }
+    },
+    {
+      "id": "exactly-at-the-tolerance",
+      "why": "The boundary. Still tolerated - the limit is inclusive.",
+      "now": "2026-02-28T09:00:00+00:00",
+      "clockHighWater": "2026-03-01T09:00:00+00:00",
+      "expect": { "rolledBack": false, "newHighWater": "2026-03-01T09:00:00+00:00" }
+    },
+    {
+      "id": "one-second-past-the-tolerance",
+      "why": "Just over the line. Reported, and the mark is kept.",
+      "now": "2026-02-28T08:59:59+00:00",
+      "clockHighWater": "2026-03-01T09:00:00+00:00",
+      "expect": { "rolledBack": true, "newHighWater": "2026-03-01T09:00:00+00:00" }
+    },
+    {
+      "id": "a-year-back",
+      "why": "The actual attempt: wind the clock back far enough to reopen an expired offline window.",
+      "now": "2025-03-01T09:00:00+00:00",
+      "clockHighWater": "2026-03-01T09:00:00+00:00",
+      "expect": { "rolledBack": true, "newHighWater": "2026-03-01T09:00:00+00:00" }
+    },
+    {
+      "id": "the-mark-never-goes-down",
+      "why": "Even after a rollback is detected the mark stays where it was, so restarting the application does not reset it.",
+      "now": "2020-01-01T00:00:00+00:00",
+      "clockHighWater": "2026-03-01T09:00:00+00:00",
+      "expect": { "rolledBack": true, "newHighWater": "2026-03-01T09:00:00+00:00" }
+    }
+  ],
+  "stateCases": [
+    {
+      "id": "rolled-back-but-online-is-fine",
+      "why": "A wrong clock only matters offline: an answer straight from the server carries the server's own time.",
+      "why2": "So the lock is applied by the evaluator only when the cached data is what is being trusted.",
+      "now": "2025-03-01T09:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_CLOCK", "reason": "clock_rolled_back", "canRun": false, "shouldCheckIn": true }
+    }
+  ]
+}

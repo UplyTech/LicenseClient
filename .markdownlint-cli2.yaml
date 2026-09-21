@@ -1,0 +1,29 @@
+# markdownlint
+#
+# Only the rules that say something about readability. Everything that argues
+# about taste is off: a check that passes judgement on taste gets switched off,
+# and then the one that would have found something is gone with it.
+config:
+  # Line length: prose is wrapped, tables and code are not.
+  MD013: false
+  # The same heading more than once is the norm in a changelog.
+  MD024: false
+  # Inline HTML is needed for <details>/<summary>.
+  MD033: false
+  # The first line need not be an H1 - front matter comes first.
+  MD041: false
+  # One bullet character, but which one does not matter.
+  MD004:
+    style: dash
+  # Whether a table separator has a space in it is invisible and changes
+  # nothing. This is the rule people switch markdownlint off over.
+  MD060: false
+globs:
+  - "**/*.md"
+ignores:
+  - "node_modules/**"
+  - "**/node_modules/**"
+  - ".venv/**"
+  - "**/.venv/**"
+  - "**/coverage/**"
+  - "**/dist/**"

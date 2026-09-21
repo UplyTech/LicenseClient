@@ -1,0 +1,51 @@
+name: CodeQL
+
+# Static analysis for both editions.
+#
+# Kept out of security.yml because it has its own cadence and its own
+# permissions, and because a CodeQL run that takes twelve minutes should not
+# hold up the two-minute dependency audit next to it.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # CodeQL's queries change even when the code does not.
+    - cron: "30 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python, actions]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # `security-and-quality` rather than `security-extended`: this is a
+          # library, and the quality queries - unused values, comparisons that
+          # are always true - catch the class of mistake that actually happens.
+          queries: security-and-quality
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}

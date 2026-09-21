@@ -1,0 +1,23 @@
+{
+  "//": [
+    "Configuration for the link check. Two kinds of exception, both with a",
+    "reason: addresses that do not exist yet because the repository is not",
+    "public, and addresses that answer an automated request with 403 while",
+    "working perfectly well in a browser."
+  ],
+  "ignorePatterns": [
+    { "pattern": "^https://github\\.com/uplytech/" },
+    { "pattern": "^https://pypi\\.org/project/" },
+    { "pattern": "^https://www\\.npmjs\\.com/package/" },
+    { "pattern": "^mailto:" },
+    { "pattern": "^#" }
+  ],
+  "replacementPatterns": [
+    { "pattern": "^/", "replacement": "{{BASEURL}}/" }
+  ],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "fallbackRetryDelay": "30s",
+  "aliveStatusCodes": [200, 206, 999]
+}

@@ -1,0 +1,38 @@
+name: Setup Node
+description: >-
+  Node plus this package's dependencies, installed from the lockfile.
+  `npm ci` and never `npm install`: the lockfile is the reason a contributor's
+  "eslint clean" means the same thing as CI's.
+
+inputs:
+  node-version:
+    description: The Node version.
+    required: false
+    default: "20"
+  install:
+    description: Run `npm ci`. Set to "false" when only the runtime is needed.
+    required: false
+    default: "true"
+  build:
+    description: Run `npm run build` after installing.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: typescript/package-lock.json
+
+    - if: inputs.install == 'true'
+      shell: bash
+      working-directory: typescript
+      run: npm ci
+
+    - if: inputs.build == 'true'
+      shell: bash
+      working-directory: typescript
+      run: npm run build

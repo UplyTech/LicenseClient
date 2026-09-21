@@ -1,0 +1,44 @@
+name: Documentation
+description: Something in the documentation is wrong or missing
+title: "docs: "
+labels: [documentation]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Documentation that is wrong costs the reader time first and trust
+        second. A report about it is worth as much as a bug report - often
+        more, because more people see it.
+
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: File and section, or the address.
+      placeholder: "README.md, the 'Five minutes' section"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is wrong with it
+      options:
+        - "An example does not run"
+        - "It describes something that no longer exists"
+        - "Something you need to know is missing"
+        - "It is ambiguous"
+        - "A dead link"
+    validations:
+      required: true
+
+  - type: textarea
+    id: detail
+    attributes:
+      label: What it should say instead
+      description: >-
+        A suggestion is welcome but not required. Saying where you got stuck is
+        entirely enough - that is exactly what the person who wrote the text can
+        no longer see.
+    validations:
+      required: true

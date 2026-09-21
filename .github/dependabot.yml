@@ -1,0 +1,67 @@
+version: 2
+
+# Three ecosystems, and almost nothing a caller inherits.
+#
+# Everything Dependabot finds here is a development tool: a test runner, a
+# linter, a GitHub action. That is why the schedule is weekly rather than daily
+# and why the updates are grouped - a daily stream of individual bumps for
+# tooling is noise, and noise is what makes the one bump that mattered get
+# merged unread.
+
+updates:
+  - package-ecosystem: npm
+    directory: /typescript
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build"
+      include: scope
+    labels: [dependencies, typescript]
+    groups:
+      typescript-toolchain:
+        patterns: ["typescript", "tsup", "@types/*"]
+        update-types: [minor, patch]
+      test-and-lint:
+        patterns: ["vitest", "@vitest/*", "eslint", "@typescript-eslint/*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: /python
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "build"
+      include: scope
+    labels: [dependencies, python]
+    groups:
+      python-dev-tools:
+        patterns: ["pytest*", "mypy", "ruff"]
+        update-types: [minor, patch]
+
+  # The ecosystem that actually carries risk here: an action runs with a token,
+  # and a compromised action version is a supply-chain problem in a repository
+  # that publishes to two registries.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: scope
+    labels: [dependencies, ci]
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: [minor, patch]

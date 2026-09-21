@@ -1,0 +1,140 @@
+name: Security
+
+# What "security" means for a library.
+#
+# LicenseClient holds no long-lived state of its own, so the interesting failures
+# are in the supply chain - the dependencies, the actions, and the secrets
+# somebody might commit - plus the static analysis that finds the bugs a test
+# suite was never written for.
+#
+# The scheduled run matters more here than the push run: a new advisory almost
+# always concerns a dependency that has not changed since the last push.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The whole history. A token committed three months ago and removed
+          # in the next commit is still a valid token.
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  npm-audit:
+    name: npm dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+
+      - run: npm ci
+        working-directory: typescript
+
+      - name: The npm package's runtime dependencies are the agreed set
+        run: node .github/scripts/check-dependencies.mjs
+
+      # The dev tree is audited too, at a level that is worth acting on. A run
+      # that is red every week because of a transitive advisory in a bundler
+      # gets switched off, and then the real one is missed as well.
+      - name: npm audit
+        run: npm audit --audit-level=high
+        working-directory: typescript
+
+  pip-audit:
+    name: Python dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pip-audit
+
+      # This package is not dependency-free, and that is a deliberate,
+      # documented exception rather than drift. The check is therefore that the
+      # list is *exactly* what was agreed - a new dependency has to change this
+      # file, which means somebody reviews it.
+      - name: The runtime dependency list is the one that was agreed
+        run: python .github/scripts/check_dependencies.py
+
+      - name: pip-audit
+        run: pip-audit --strict .[dev]
+        working-directory: python
+
+  osv:
+    name: OSV scanner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # A second opinion on both lockfiles from a different advisory database.
+      - uses: google/osv-scanner-action/osv-scanner-action@v2
+        continue-on-error: true
+        with:
+          scan-args: |-
+            --recursive
+            --format=sarif
+            --output=osv.sarif
+            ./
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: osv.sarif
+          category: osv
+
+  actions:
+    name: Workflow hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # A workflow without a `permissions:` block gets whatever the repository
+      # default is, which is how a linter job ends up able to push to main.
+      - name: Every workflow declares its permissions
+        run: |
+          failed=0
+          for file in .github/workflows/*.yml; do
+            if ! grep -q '^permissions:' "$file"; then
+              echo "::error file=$file::no top-level permissions: block"
+              failed=1
+            fi
+          done
+          [ "$failed" = "0" ] && echo "ok - every workflow declares its permissions"
+          exit $failed
+
+      # A typo in a workflow is not caught by anything else in this repository:
+      # it surfaces as a startup error on the run that needed to work.
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color

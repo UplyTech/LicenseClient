@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "//": [
+    "knip reports what nobody imports. For a library that needs",
+    "explaining: the entry point is by definition imported by nobody",
+    "inside the repository, only by callers outside it. That is why it",
+    "is listed as an entry and not treated as a finding."
+  ],
+  "entry": [
+    "src/index.ts",
+    "examples/*.ts",
+    "scripts/*.mjs"
+  ],
+  "project": [
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "ignoreDependencies": [
+    "@vitest/coverage-v8"
+  ],
+  "ignoreExportsUsedInFile": true
+}

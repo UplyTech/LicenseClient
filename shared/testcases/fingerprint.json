@@ -1,0 +1,296 @@
+{
+  "formatVersion": 1,
+  "description": "Component hashing, the combined fingerprint and the weighted comparison used for rebinding. The weights and the comparison rules mirror app/core/fingerprint.py in the API - the server makes the rebind decision, and the client has to be able to predict it.",
+  "notes": [
+    "Every component is hashed on the client. Host names, MAC addresses and user names are personal data and never leave the machine in clear.",
+    "The combined fingerprint is sha256 over the stable component hashes, sorted by component name and joined with '|'. install_id is deliberately left out: it changes on a reinstall, and the seat should survive one.",
+    "A component missing on either side counts as neither a match nor a mismatch. An older client version simply does not report everything, and punishing that would make every upgrade look like a new machine."
+  ],
+  "weights": {
+    "machine_id": 3,
+    "board": 3,
+    "disk": 2,
+    "cpu": 1,
+    "mac": 1,
+    "user": 1,
+    "install_id": 1
+  },
+  "totalWeight": 12,
+  "hashCases": [
+    {
+      "id": "empty-string",
+      "input": "",
+      "expect": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "ascii",
+      "input": "machine-a",
+      "expect": "f9c8c7ddcf3d5f566fd679f65db5dcab4446594cf5d992feead5416cbc13e062"
+    }
+  ],
+  "combineCases": [
+    {
+      "id": "six-components",
+      "why": "The ordinary desktop case.",
+      "components": {
+        "machine_id": "machine-a",
+        "board": "board-a",
+        "disk": "disk-a",
+        "cpu": "cpu-a",
+        "mac": "mac-a",
+        "user": "user-a"
+      },
+      "expect": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d"
+    },
+    {
+      "id": "install-id-is-ignored",
+      "why": "Same six components plus an install id must produce the same fingerprint as the case above.",
+      "components": {
+        "machine_id": "machine-a",
+        "board": "board-a",
+        "disk": "disk-a",
+        "cpu": "cpu-a",
+        "mac": "mac-a",
+        "user": "user-a",
+        "install_id": "0b6f7f2c-1c6a-4a4a-9f1a-1b1b1b1b1b1b"
+      },
+      "sameAs": "six-components",
+      "expect": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d"
+    },
+    {
+      "id": "unknown-components-are-ignored",
+      "why": "A newer client reporting something this version does not know about must not shift the fingerprint of older installs.",
+      "components": {
+        "machine_id": "machine-a",
+        "board": "board-a",
+        "disk": "disk-a",
+        "cpu": "cpu-a",
+        "mac": "mac-a",
+        "user": "user-a",
+        "gpu": "gpu-a"
+      },
+      "sameAs": "six-components",
+      "expect": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d"
+    },
+    {
+      "id": "order-does-not-matter",
+      "why": "Components are sorted by name before joining, so the collection order on the machine is irrelevant.",
+      "components": {
+        "user": "user-a",
+        "mac": "mac-a",
+        "cpu": "cpu-a",
+        "disk": "disk-a",
+        "board": "board-a",
+        "machine_id": "machine-a"
+      },
+      "sameAs": "six-components",
+      "expect": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d"
+    },
+    {
+      "id": "one-component-changed",
+      "why": "A new docking station. The fingerprint changes - which is why the rebind exists.",
+      "components": {
+        "machine_id": "machine-a",
+        "board": "board-a",
+        "disk": "disk-a",
+        "cpu": "cpu-a",
+        "mac": "mac-b",
+        "user": "user-a"
+      },
+      "differsFrom": "six-components",
+      "expect": "48d8ad1cb89811574994f6ce5776f7b6ffedcc856241a48b9c1ba35903fbf2de"
+    },
+    {
+      "id": "empty-components",
+      "why": "Nothing could be collected. Still deterministic, and the caller decides what to do with it.",
+      "components": {},
+      "expect": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "compareCases": [
+    {
+      "id": "identical",
+      "stored": {
+        "machine_id": "m",
+        "board": "b",
+        "disk": "d",
+        "cpu": "c",
+        "mac": "n",
+        "user": "u"
+      },
+      "presented": {
+        "machine_id": "m",
+        "board": "b",
+        "disk": "d",
+        "cpu": "c",
+        "mac": "n",
+        "user": "u"
+      },
+      "expect": {
+        "weight": 11,
+        "matched": [
+          "machine_id",
+          "board",
+          "disk",
+          "cpu",
+          "mac",
+          "user"
+        ],
+        "changed": []
+      }
+    },
+    {
+      "id": "new-docking-station",
+      "why": "Only the network address moved. Weight 10 of 12 - far above the default rebind threshold of 4.",
+      "stored": {
+        "machine_id": "m",
+        "board": "b",
+        "disk": "d",
+        "cpu": "c",
+        "mac": "n",
+        "user": "u"
+      },
+      "presented": {
+        "machine_id": "m",
+        "board": "b",
+        "disk": "d",
+        "cpu": "c",
+        "mac": "NEW",
+        "user": "u"
+      },
+      "expect": {
+        "weight": 10,
+        "matched": [
+          "machine_id",
+          "board",
+          "disk",
+          "cpu",
+          "user"
+        ],
+        "changed": [
+          "mac"
+        ]
+      }
+    },
+    {
+      "id": "disk-swapped-and-reinstalled",
+      "why": "New disk, new user profile. Board and machine id carry it: weight 8.",
+      "stored": {
+        "machine_id": "m",
+        "board": "b",
+        "disk": "d",
+        "cpu": "c",
+        "mac": "n",
+        "user": "u"
+      },
+      "presented": {
+        "machine_id": "m",
+        "board": "b",
+        "disk": "NEW",
+        "cpu": "c",
+        "mac": "n",
+        "user": "NEW"
+      },
+      "expect": {
+        "weight": 8,
+        "matched": [
+          "machine_id",
+          "board",
+          "cpu",
+          "mac"
+        ],
+        "changed": [
+          "disk",
+          "user"
+        ]
+      }
+    },
+    {
+      "id": "a-different-computer",
+      "why": "Nothing in common. Weight 0 - a new seat, not a rebind.",
+      "stored": {
+        "machine_id": "m",
+        "board": "b",
+        "disk": "d",
+        "cpu": "c",
+        "mac": "n",
+        "user": "u"
+      },
+      "presented": {
+        "machine_id": "X",
+        "board": "Y",
+        "disk": "Z",
+        "cpu": "W",
+        "mac": "V",
+        "user": "T"
+      },
+      "expect": {
+        "weight": 0,
+        "matched": [],
+        "changed": [
+          "machine_id",
+          "board",
+          "disk",
+          "cpu",
+          "mac",
+          "user"
+        ]
+      }
+    },
+    {
+      "id": "older-client-reports-less",
+      "why": "The stored seat knows six components, the client only sends three. The three that agree count; the rest are silent.",
+      "stored": {
+        "machine_id": "m",
+        "board": "b",
+        "disk": "d",
+        "cpu": "c",
+        "mac": "n",
+        "user": "u"
+      },
+      "presented": {
+        "machine_id": "m",
+        "board": "b",
+        "cpu": "c"
+      },
+      "expect": {
+        "weight": 7,
+        "matched": [
+          "machine_id",
+          "board",
+          "cpu"
+        ],
+        "changed": []
+      }
+    },
+    {
+      "id": "empty-values-are-absent",
+      "why": "An empty string is a failed collection, not a value that happens to differ.",
+      "stored": {
+        "machine_id": "m",
+        "board": ""
+      },
+      "presented": {
+        "machine_id": "m",
+        "board": "b"
+      },
+      "expect": {
+        "weight": 3,
+        "matched": [
+          "machine_id"
+        ],
+        "changed": []
+      }
+    },
+    {
+      "id": "nothing-on-either-side",
+      "stored": {},
+      "presented": {},
+      "expect": {
+        "weight": 0,
+        "matched": [],
+        "changed": []
+      }
+    }
+  ]
+}

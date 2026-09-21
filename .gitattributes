@@ -1,0 +1,28 @@
+# Zeilenenden.
+#
+# Die Workflows laufen auf Linux, und mehrere Pruefungen - yamllint, shellcheck -
+# melden CRLF zu Recht als Fehler. Ein Windows-Arbeitsplatz soll trotzdem
+# funktionieren: `text=auto` checkt lokal aus, was das System erwartet, und
+# checkt ein, was der Runner braucht.
+* text=auto eol=lf
+
+# Ausfuehrbares und alles, was ein Interpreter liest, immer mit LF - ein
+# Shell-Skript mit CRLF scheitert unter Linux an der Shebang-Zeile, mit einer
+# Fehlermeldung, die nichts damit zu tun zu haben scheint.
+*.sh text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+# Binaeres nie anfassen.
+*.png binary
+*.jpg binary
+*.ico binary
+*.tgz binary
+*.whl binary
+*.pyd binary

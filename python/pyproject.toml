@@ -1,0 +1,108 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "uplytech-license-client"
+version = "2.0.0"
+description = "Client half of the UplyTech licence system: offline key validation, device fingerprinting, activation, heartbeat, Ed25519-signed answers and an encrypted offline cache."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "UplyTech (Tim Hauke)", email = "dev@uplytech.de" }]
+maintainers = [{ name = "UplyTech", email = "dev@uplytech.de" }]
+keywords = [
+    "license",
+    "licence",
+    "licensing",
+    "activation",
+    "device-fingerprint",
+    "ed25519",
+    "offline",
+    "discord-bot",
+    "uplytech",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+# The sibling packages (EconomyWorld, RankMode) mandate zero dependencies.
+# This one deviates, deliberately and exactly once: the standard library has
+# neither Ed25519 nor AES-GCM. The alternative - an HMAC over a secret shipped
+# inside the application - would let anyone who unpacks it issue themselves a
+# licence, which is the one thing this package exists to prevent. The
+# deviation is documented in README.md under "Dependencies".
+dependencies = ["cryptography>=42"]
+
+[project.urls]
+Homepage = "https://github.com/uplytech/license-client"
+Repository = "https://github.com/uplytech/license-client"
+Changelog = "https://github.com/uplytech/license-client/blob/main/CHANGELOG.md"
+Issues = "https://github.com/uplytech/license-client/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "mypy>=1.11",
+    "ruff>=0.6",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uplytech_license"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "examples", "README.md", "LICENSE", "CHANGELOG.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q --strict-markers"
+
+[tool.coverage.run]
+branch = true
+source = ["uplytech_license"]
+# probe.py shells out to the operating system it is running on. It cannot be
+# exercised for Windows, macOS and Linux from one machine, and mocking it would
+# only test the mocks.
+omit = ["*/probe.py"]
+
+[tool.coverage.report]
+# Raised to just under what the suite actually reaches, so the number is a
+# floor rather than a wish. The two lines short of 100 are marked in the source
+# with the reason they cannot run - not with a pragma that hides them.
+fail_under = 99
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+files = ["src/uplytech_license"]
+
+[tool.ruff]
+line-length = 95
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RET", "ARG"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG"]
+"examples/*" = ["ARG"]

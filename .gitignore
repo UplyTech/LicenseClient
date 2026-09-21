@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node
+node_modules/
+# typescript/package-lock.json is committed on purpose: CI installs with
+# `npm ci`, which needs it, and a library whose contributors resolve different
+# dev-tool versions is a library whose "eslint clean" means different things to
+# different people.
+typescript/dist/
+coverage/
+*.tgz
+.tsup/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# generated copies of the repository-root files (kept so each published artefact carries them)
+python/LICENSE
+python/README.md
+python/CHANGELOG.md
+typescript/LICENSE
+typescript/README.md
+typescript/CHANGELOG.md

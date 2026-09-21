@@ -1,0 +1,20 @@
+{
+  // The examples import the package by its published name, so they are not
+  // covered by the main tsconfig. They are still code that gets copied into
+  // real applications, and an example that does not compile is worse than no
+  // example - so they get their own check, with the package name mapped onto
+  // the sources.
+  //
+  //   npx tsc -p tsconfig.examples.json --noEmit
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@uplytech/license-client": ["./src/index.ts"]
+    }
+  },
+  "include": ["examples/**/*", "src/**/*"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

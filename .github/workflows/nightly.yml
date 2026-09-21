@@ -1,0 +1,110 @@
+name: Nightly
+
+# What is too slow to run on every push.
+#
+# A pull request should get an answer in minutes. Anything that takes longer
+# belongs here - and is not made worthless by only reporting the next morning.
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # The versions that are not here yet.
+  #
+  # A break in a pre-release is not a red build for a pull request - but knowing
+  # about it three months before the release is the whole difference between
+  # "we will adapt" and "we adapt right now".
+  # ---------------------------------------------------------------------------
+  future:
+    name: ${{ matrix.runtime }} ${{ matrix.version }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runtime: python, version: "3.14" }
+          - { runtime: node, version: "24" }
+    steps:
+      - uses: actions/checkout@v4
+
+      - if: matrix.runtime == 'python'
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ matrix.version }}
+
+      - if: matrix.runtime == 'python'
+        working-directory: python
+        run: pytest -q
+
+      - if: matrix.runtime == 'node'
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ matrix.version }}
+
+      - if: matrix.runtime == 'node'
+        working-directory: typescript
+        run: npm test
+
+  # ---------------------------------------------------------------------------
+  # Testing whether the tests are worth anything.
+  #
+  # Coverage says which line was executed. It does not say whether anybody
+  # looked. A mutation test changes a line and sees whether the suite goes red -
+  # a surviving mutation is a line that looks tested and is not.
+  # ---------------------------------------------------------------------------
+  mutation:
+    name: Mutation testing
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-python
+
+      - name: mutmut
+        working-directory: python
+        run: |
+          pip install --quiet mutmut
+          mutmut run --paths-to-mutate src --no-progress || true
+          echo "### Surviving mutations" >> "$GITHUB_STEP_SUMMARY"
+          mutmut results >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # What a caller would install today - with today's dependencies, not with the
+  # ones in the lockfile.
+  #
+  # The lockfile protects CI from the outside world. That is exactly why CI does
+  # not notice when the outside world has moved.
+  # ---------------------------------------------------------------------------
+  fresh-dependencies:
+    name: With the newest dependencies
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-python
+        with:
+          install: "false"
+      - uses: ./.github/actions/setup-node
+        with:
+          install: "false"
+
+      - name: Python without the lockfile
+        working-directory: python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" --upgrade
+          pytest -q
+
+      - name: Node without the lockfile
+        working-directory: typescript
+        run: |
+          npm install --no-audit --no-fund
+          npm test

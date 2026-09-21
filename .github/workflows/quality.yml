@@ -1,0 +1,168 @@
+name: Quality
+
+# The checks no test finds.
+#
+# `ci.yml` proves the code does what the tests ask of it. This is about what
+# comes after that: code nobody calls any more, a shell script one quote short,
+# a YAML file that happens to still parse.
+#
+# Every check here was green the day it landed. What it found was fixed, not
+# excepted.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Scripts that run in CI with a token.
+  #
+  # An `rm -rf "$DIR"` with an empty $DIR is not a typo there any more.
+  # ---------------------------------------------------------------------------
+  shell:
+    name: Shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          files=$(git ls-files '*.sh')
+          if [ -z "$files" ]; then
+            echo "::error::No shell scripts found - then this job checks nothing."
+            exit 1
+          fi
+          # No -e: what shellcheck reports gets fixed rather than excepted. If a
+          # -e ever appears here, the reason belongs next to it.
+          # shellcheck disable=SC2086
+          shellcheck --severity=warning $files
+
+      - name: Every script stops on an error
+        run: |
+          # Without `set -euo pipefail` a script carries on after a failure and
+          # reports success at the end. That is the kind of green tick nobody
+          # looks behind.
+          failed=0
+          for file in $(git ls-files '*.sh'); do
+            if ! head -12 "$file" | grep -q 'set -euo pipefail'; then
+              echo "::error file=$file::no 'set -euo pipefail' in the first twelve lines"
+              failed=1
+            fi
+          done
+          [ "$failed" = "0" ] && echo "ok - every script stops on an error"
+          exit $failed
+
+  yaml:
+    name: YAML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-python
+        with:
+          install: "false"
+
+      - name: yamllint
+        run: |
+          pip install --quiet yamllint
+          yamllint --strict -c .github/yamllint.yaml .github/
+
+  markdown:
+    name: Markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node
+        with:
+          install: "false"
+
+      - name: markdownlint
+        run: npx --yes markdownlint-cli2@latest
+
+  # ---------------------------------------------------------------------------
+  # Dead code.
+  #
+  # An export nobody imports is either an oversight or a promise to a caller who
+  # does not exist. Both are worth knowing - reported rather than blocking,
+  # because in a library "not used here" is the normal case and says nothing.
+  # ---------------------------------------------------------------------------
+  dead-code:
+    name: Nothing unused
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node
+      - uses: ./.github/actions/setup-python
+
+      - name: knip (TypeScript)
+        working-directory: typescript
+        continue-on-error: true
+        run: npx --yes knip@latest --config ../.github/knip.json --reporter compact
+
+      - name: vulture (Python)
+        working-directory: python
+        continue-on-error: true
+        run: |
+          pip install --quiet vulture
+          # 80 per cent confidence: below that vulture reports every attribute
+          # only reached through getattr, and that is noise.
+          vulture src tests --min-confidence 80
+
+  # ---------------------------------------------------------------------------
+  # Complexity as a number rather than as a feeling.
+  # ---------------------------------------------------------------------------
+  complexity:
+    name: Complexity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-python
+
+      - name: Cyclomatic complexity
+        working-directory: python
+        run: |
+          pip install --quiet radon
+          radon cc src --show-complexity --average --order SCORE
+          # Grade D is a function nobody can hold in their head any more - and in
+          # a library whose numbers other people build on, that is where a bug
+          # goes unnoticed.
+          over=$(radon cc src --min D --json | python -c "import json,sys; d=json.load(sys.stdin); print(sum(len(v) for v in d.values()))")
+          if [ "$over" != "0" ]; then
+            echo "::error::$over functions at complexity D or worse"
+            radon cc src --min D --show-complexity
+            exit 1
+          fi
+          echo "ok - no function above grade C"
+
+  # ---------------------------------------------------------------------------
+  # The automation checks itself.
+  # ---------------------------------------------------------------------------
+  workflows:
+    name: Workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+
+      # zizmor looks for what actionlint does not: permissions that are too
+      # wide, a checkout of a fork's head under a writable token, an expression
+      # from a stranger's hand in a command line.
+      - name: zizmor
+        continue-on-error: true
+        run: |
+          pipx install zizmor
+          zizmor --format plain .github/workflows/

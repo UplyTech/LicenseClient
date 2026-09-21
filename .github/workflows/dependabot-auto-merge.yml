@@ -1,0 +1,47 @@
+name: Dependabot auto-merge
+
+# Patch and minor updates to development tools merge themselves once CI is
+# green. Nothing else does.
+#
+# A human reading "bump vitest from 1.6.0 to 1.6.1" adds nothing the test suite
+# has not already checked - and a queue of twelve such pull requests is how the
+# one that matters gets approved without being read.
+#
+# Major bumps are excluded on purpose. A major version of a compiler or a linter
+# can change what "clean" means, and that is a decision.
+
+on:
+  pull_request_target:
+
+permissions:
+  contents: read
+
+jobs:
+  auto-merge:
+    name: Auto-merge
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Read the update
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enable auto-merge for patch and minor updates
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"
+
+      - name: Say why a major update is waiting
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr comment "$PR_URL" --body "This is a major version bump, so it is not auto-merged. A major version of a linter or a compiler can change what \"clean\" means. Green CI here proves the code still passes - not that the new definition of passing is the one this project wants."

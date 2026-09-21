@@ -1,0 +1,293 @@
+{
+  "formatVersion": 1,
+  "description": "Semantic version ordering, and the update window a licence's maxVersion describes. Hand written: this is the specification, and generating it from an implementation would only prove that the implementation agrees with itself.",
+  "notes": [
+    "'compare' cases give an expected sign: -1 when left orders below right, 0 when equal, 1 when above.",
+    "Build metadata after '+' is ignored entirely, so two versions differing only there compare equal.",
+    "A pre-release orders BELOW the release it precedes. 2.0.0-rc.1 is not yet 2.0.0.",
+    "'within' cases are the licence question: may a build of appVersion run under a licence capped at maxVersion? Null on either side means yes - see the reasoning in semver.ts / semver.py.",
+    "'parse' cases pin what counts as a version at all. Anything that does not parse must not lock a paying customer out."
+  ],
+  "compare": [
+    {
+      "id": "equal-identical",
+      "why": "The base case.",
+      "left": "1.2.3",
+      "right": "1.2.3",
+      "expect": 0
+    },
+    {
+      "id": "equal-through-omitted-components",
+      "why": "A missing minor or patch is zero, not absent. '1' and '1.0.0' are the same release.",
+      "left": "1",
+      "right": "1.0.0",
+      "expect": 0
+    },
+    {
+      "id": "equal-through-leading-v",
+      "why": "Half the world writes tags with a v. Refusing it would refuse the version it allows.",
+      "left": "v2.5.1",
+      "right": "2.5.1",
+      "expect": 0
+    },
+    {
+      "id": "equal-ignoring-build-metadata",
+      "why": "SemVer 2.0.0: build metadata is not part of precedence. Two builds of the same version are the same version.",
+      "left": "1.2.3+20260101.abcdef",
+      "right": "1.2.3+deadbeef",
+      "expect": 0
+    },
+    {
+      "id": "major-beats-everything",
+      "why": "2.0.0 outranks 1.99.99 - the whole point of the major number.",
+      "left": "1.99.99",
+      "right": "2.0.0",
+      "expect": -1
+    },
+    {
+      "id": "minor-decides-when-major-ties",
+      "why": "Ordinary ordering.",
+      "left": "1.4.0",
+      "right": "1.5.0",
+      "expect": -1
+    },
+    {
+      "id": "patch-decides-when-minor-ties",
+      "why": "Ordinary ordering.",
+      "left": "1.4.7",
+      "right": "1.4.8",
+      "expect": -1
+    },
+    {
+      "id": "ten-is-above-nine",
+      "why": "THE reason this module exists. As strings '1.10.0' < '1.9.0'; as versions it is the other way round, and the mistake only surfaces at the tenth minor release.",
+      "left": "1.10.0",
+      "right": "1.9.0",
+      "expect": 1
+    },
+    {
+      "id": "hundred-is-above-nineteen",
+      "why": "The same trap one order of magnitude further on, where a naive fix that pads to two digits also breaks.",
+      "left": "1.100.0",
+      "right": "1.19.0",
+      "expect": 1
+    },
+    {
+      "id": "patch-ten-is-above-patch-nine",
+      "why": "The same trap in the third component, which is where it actually happens first.",
+      "left": "3.2.10",
+      "right": "3.2.9",
+      "expect": 1
+    },
+    {
+      "id": "prerelease-is-below-its-release",
+      "why": "2.0.0-rc.1 is not yet 2.0.0. A licence capped at 1.9.9 must block both; a licence capped at 2.0.0 must allow the release candidate.",
+      "left": "2.0.0-rc.1",
+      "right": "2.0.0",
+      "expect": -1
+    },
+    {
+      "id": "prerelease-still-outranks-a-lower-release",
+      "why": "The pre-release rule only applies within the same numbers. 2.0.0-alpha is still above 1.9.9.",
+      "left": "2.0.0-alpha",
+      "right": "1.9.9",
+      "expect": 1
+    },
+    {
+      "id": "numeric-prerelease-identifiers-compare-numerically",
+      "why": "beta.2 comes before beta.10, which is exactly the trap the release numbers have.",
+      "left": "1.0.0-beta.2",
+      "right": "1.0.0-beta.10",
+      "expect": -1
+    },
+    {
+      "id": "numeric-sorts-below-alphanumeric",
+      "why": "SemVer 2.0.0 rule 11.4.1. Reads backwards until you remember that 'alpha' is a word and '1' is a build counter.",
+      "left": "1.0.0-1",
+      "right": "1.0.0-alpha",
+      "expect": -1
+    },
+    {
+      "id": "alphanumeric-identifiers-compare-by-ascii",
+      "why": "alpha < beta < rc, which is the convention every release process here uses.",
+      "left": "1.0.0-alpha",
+      "right": "1.0.0-beta",
+      "expect": -1
+    },
+    {
+      "id": "a-longer-prerelease-outranks-the-prefix-it-extends",
+      "why": "SemVer 2.0.0 rule 11.4.4. More identifiers means more specific, so 1.0.0-alpha comes before 1.0.0-alpha.1.",
+      "left": "1.0.0-alpha",
+      "right": "1.0.0-alpha.1",
+      "expect": -1
+    },
+    {
+      "id": "the-canonical-semver-chain",
+      "why": "The example in the specification itself, one step of it, so a rewrite that gets the individual rules right but composes them wrongly still fails.",
+      "left": "1.0.0-alpha.beta",
+      "right": "1.0.0-beta",
+      "expect": -1
+    },
+    {
+      "id": "prerelease-with-build-metadata",
+      "why": "Metadata is stripped before the pre-release is compared, not after.",
+      "left": "1.0.0-rc.1+build.5",
+      "right": "1.0.0-rc.1",
+      "expect": 0
+    }
+  ],
+  "within": [
+    {
+      "id": "no-cap-means-no-limit",
+      "why": "A subscription has no update window. There is nothing to be past.",
+      "appVersion": "9.9.9",
+      "maxVersion": null,
+      "expect": true
+    },
+    {
+      "id": "empty-cap-means-no-limit",
+      "why": "An empty string is a null that went through a form. Same answer.",
+      "appVersion": "9.9.9",
+      "maxVersion": "",
+      "expect": true
+    },
+    {
+      "id": "exactly-at-the-cap-is-allowed",
+      "why": "'Up to and including' - a licence for 2.4.0 covers 2.4.0. An off-by-one here locks out everybody who bought the current release.",
+      "appVersion": "2.4.0",
+      "maxVersion": "2.4.0",
+      "expect": true
+    },
+    {
+      "id": "below-the-cap-is-allowed",
+      "why": "The ordinary case for a perpetual licence: an older build keeps working forever.",
+      "appVersion": "2.1.7",
+      "maxVersion": "2.4.0",
+      "expect": true
+    },
+    {
+      "id": "above-the-cap-is-refused",
+      "why": "The whole point. A perpetual licence sold for the 2.x line does not cover 3.0.",
+      "appVersion": "3.0.0",
+      "maxVersion": "2.4.0",
+      "expect": false
+    },
+    {
+      "id": "one-patch-above-the-cap-is-refused",
+      "why": "The window is a version, not a major line.",
+      "appVersion": "2.4.1",
+      "maxVersion": "2.4.0",
+      "expect": false
+    },
+    {
+      "id": "ten-above-nine-is-refused",
+      "why": "The string-comparison trap, in the form that actually reaches a customer: a licence capped at 1.9.0 must not silently cover 1.10.0.",
+      "appVersion": "1.10.0",
+      "maxVersion": "1.9.0",
+      "expect": false
+    },
+    {
+      "id": "a-release-candidate-of-the-capped-version-is-allowed",
+      "why": "2.4.0-rc.1 orders below 2.4.0, so a licence capped at 2.4.0 covers its own release candidates.",
+      "appVersion": "2.4.0-rc.1",
+      "maxVersion": "2.4.0",
+      "expect": true
+    },
+    {
+      "id": "a-release-candidate-of-the-next-version-is-refused",
+      "why": "A beta of 3.0 is still a build of 3.0, and the licence stops at 2.x.",
+      "appVersion": "3.0.0-beta.1",
+      "maxVersion": "2.4.0",
+      "expect": false
+    },
+    {
+      "id": "an-unreadable-app-version-does-not-lock",
+      "why": "A build reporting 'dev' or a commit hash is a developer's build or a repackaged distribution. Neither is a licence violation, and the server enforces the same window with data the client cannot edit.",
+      "appVersion": "dev",
+      "maxVersion": "2.4.0",
+      "expect": true
+    },
+    {
+      "id": "an-unreadable-cap-does-not-lock",
+      "why": "That is our own data being wrong. Locking a paying customer out over a malformed field in our database would be indefensible.",
+      "appVersion": "9.9.9",
+      "maxVersion": "latest",
+      "expect": true
+    },
+    {
+      "id": "a-missing-app-version-does-not-lock",
+      "why": "A caller that does not know its own version gets no answer rather than a wrong one.",
+      "appVersion": null,
+      "maxVersion": "2.4.0",
+      "expect": true
+    },
+    {
+      "id": "build-metadata-on-the-app-version-is-ignored",
+      "why": "A CI build stamp must not turn an allowed version into a refused one.",
+      "appVersion": "2.4.0+ci.4711",
+      "maxVersion": "2.4.0",
+      "expect": true
+    },
+    {
+      "id": "a-leading-v-on-either-side-is-ignored",
+      "why": "The licence was typed by a human into an admin form; the version comes from a build script. They will not agree on the v.",
+      "appVersion": "2.4.0",
+      "maxVersion": "v2.4.0",
+      "expect": true
+    }
+  ],
+  "parse": [
+    {
+      "id": "full-triple",
+      "input": "1.2.3",
+      "expect": { "major": 1, "minor": 2, "patch": 3, "prerelease": [] }
+    },
+    {
+      "id": "major-and-minor",
+      "why": "A missing patch is zero.",
+      "input": "1.2",
+      "expect": { "major": 1, "minor": 2, "patch": 0, "prerelease": [] }
+    },
+    {
+      "id": "major-only",
+      "why": "'2' is a version. Some products really do ship one number.",
+      "input": "2",
+      "expect": { "major": 2, "minor": 0, "patch": 0, "prerelease": [] }
+    },
+    {
+      "id": "leading-v-stripped",
+      "input": "v10.0.1",
+      "expect": { "major": 10, "minor": 0, "patch": 1, "prerelease": [] }
+    },
+    {
+      "id": "surrounding-whitespace-tolerated",
+      "why": "A version read out of a file usually arrives with a newline on it.",
+      "input": "  3.4.5  ",
+      "expect": { "major": 3, "minor": 4, "patch": 5, "prerelease": [] }
+    },
+    {
+      "id": "prerelease-split-into-identifiers",
+      "why": "Numeric identifiers become numbers so they compare numerically; the rest stay strings.",
+      "input": "1.0.0-alpha.7",
+      "expect": { "major": 1, "minor": 0, "patch": 0, "prerelease": ["alpha", 7] }
+    },
+    {
+      "id": "build-metadata-dropped",
+      "input": "1.0.0+exp.sha.5114f85",
+      "expect": { "major": 1, "minor": 0, "patch": 0, "prerelease": [] }
+    },
+    {
+      "id": "prerelease-and-build-metadata",
+      "input": "1.0.0-beta.2+build.9",
+      "expect": { "major": 1, "minor": 0, "patch": 0, "prerelease": ["beta", 2] }
+    },
+    { "id": "empty-string", "input": "", "expect": null },
+    { "id": "not-a-version-at-all", "input": "latest", "expect": null },
+    { "id": "a-word-with-numbers-in-it", "input": "dev-2026", "expect": null },
+    { "id": "four-components", "why": "Not SemVer. Windows file versions look like this and must not be guessed at.", "input": "1.2.3.4", "expect": null },
+    { "id": "negative-major", "input": "-1.0.0", "expect": null },
+    { "id": "trailing-dot", "input": "1.2.", "expect": null },
+    { "id": "empty-prerelease", "why": "A dangling hyphen is a typo, not a pre-release.", "input": "1.0.0-", "expect": null },
+    { "id": "a-commit-hash", "why": "What an unversioned build actually reports.", "input": "9f3c1ab", "expect": null }
+  ]
+}

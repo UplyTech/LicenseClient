@@ -1,0 +1,56 @@
+name: Feature request
+description: Something the library should be able to do and cannot
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LicenseClient is small on purpose. Most of what it does not do, it does not
+        do deliberately - see the boundaries in CONTRIBUTING.md, which are what
+        keep one library usable in several very different callers at once.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: The situation, not the solution. What can you not get today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do instead today
+      description: >-
+        If several callers each write the same twenty lines around the library,
+        that is the strongest possible case for the feature. If nobody has
+        needed it yet, say that too.
+
+  - type: textarea
+    id: shape
+    attributes:
+      label: What it might look like
+      description: Optional. A signature in either edition is enough.
+      render: python
+
+  - type: dropdown
+    id: bump
+    attributes:
+      label: What this would cost callers
+      options:
+        - "Nothing - a new option with a default that keeps today's behaviour (minor)"
+        - "A new capability alongside the existing ones (minor)"
+        - "It changes what an existing call returns (major)"
+        - "It removes or renames something public (major)"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Boundaries
+      options:
+        - label: I have read the "what belongs in this library" section of CONTRIBUTING.md, and this stays inside it.
+          required: true

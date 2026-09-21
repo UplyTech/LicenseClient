@@ -1,0 +1,25 @@
+# Who has to look at what before it is merged.
+
+*                                   @uplytech/packages
+
+# The two editions
+/python/                            @uplytech/packages
+/typescript/                        @uplytech/packages
+
+# Automation, publishing credentials and the release path
+/.github/                           @uplytech/owners
+
+# Release-decision territory: a one-line change here moves behaviour for
+# every caller, so it is never merged on one pair of eyes.
+/python/src/uplytech_license/signature.py @uplytech/owners @uplytech/packages
+/python/src/uplytech_license/crypto.py @uplytech/owners @uplytech/packages
+/python/src/uplytech_license/canonical_json.py @uplytech/owners @uplytech/packages
+/typescript/src/signature.ts         @uplytech/owners @uplytech/packages
+/typescript/src/crypto.ts            @uplytech/owners @uplytech/packages
+/typescript/src/canonical-json.ts    @uplytech/owners @uplytech/packages
+/shared/                             @uplytech/owners @uplytech/packages
+
+# The documents that define what this library is allowed to become
+/CONTRIBUTING.md                    @uplytech/owners
+/SECURITY.md                        @uplytech/owners
+/CHANGELOG.md                       @uplytech/owners

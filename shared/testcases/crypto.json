@@ -1,0 +1,76 @@
+{
+  "formatVersion": 1,
+  "description": "The local cache: AES-256-GCM with a key derived from the device fingerprint. A cache file copied to another computer does not decrypt there, which is what makes an offline licence non-transferable.",
+  "notes": [
+    "HKDF-SHA256 over the fingerprint string, not over a stored key. There is nothing to steal from the file system.",
+    "The product slug goes into both the HKDF info and the additional authenticated data, so a cache from one product cannot be replayed into another on the same machine.",
+    "The nonce is random in production; these vectors pin a fixed one so the ciphertext is reproducible.",
+    "A cache that fails to decrypt is discarded, never fatal. Corruption happens - a full disk, a killed process - and the right answer is to ask the server again, not to refuse to start."
+  ],
+  "salt": "uplytech-license-cache",
+  "infoPrefix": "v1:",
+  "aadPrefix": "uplytech-license-cache-v1:",
+  "hkdfCases": [
+    {
+      "id": "teampromanager",
+      "fingerprint": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d",
+      "productSlug": "teampromanager",
+      "expectKeyBase64": "L9zc1Kd7q+9Pn8MYlhT4/abPE0WvPFSVBGcTGrrzVDg="
+    },
+    {
+      "id": "same-machine-other-product",
+      "why": "Different info, different key - a FlashTrix cache cannot be read as a TeamProManager one.",
+      "fingerprint": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d",
+      "productSlug": "flashtrix",
+      "expectKeyBase64": "lK9WADmOuqOHPfF8eIlvZpehZXy0f0uBa/pf6dafPLM="
+    },
+    {
+      "id": "other-machine-same-product",
+      "why": "This is the copy protection.",
+      "fingerprint": "48d8ad1cb89811574994f6ce5776f7b6ffedcc856241a48b9c1ba35903fbf2de",
+      "productSlug": "teampromanager",
+      "expectKeyBase64": "bpjosssGDs0MK4B6TlNRVq68Tqubp/vpM6CH3MZEX4c="
+    }
+  ],
+  "sealCase": {
+    "id": "round-trip",
+    "fingerprint": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d",
+    "productSlug": "teampromanager",
+    "nonceBase64": "AAECAwQFBgcICQoL",
+    "plaintext": "{\"status\":\"active\",\"tier\":\"pro\"}",
+    "expectCiphertextBase64": "14LWUNo0x0yfDxYKD9S9KxvVePga6gi9scdT89LRN9Q24SmrT7LFpxo6qsWCnobr"
+  },
+  "openFailures": [
+    {
+      "id": "wrong-machine",
+      "why": "The file was copied. The tag does not verify.",
+      "fingerprint": "48d8ad1cb89811574994f6ce5776f7b6ffedcc856241a48b9c1ba35903fbf2de",
+      "productSlug": "teampromanager",
+      "nonceBase64": "AAECAwQFBgcICQoL",
+      "ciphertextBase64": "14LWUNo0x0yfDxYKD9S9KxvVePga6gi9scdT89LRN9Q24SmrT7LFpxo6qsWCnobr"
+    },
+    {
+      "id": "wrong-product",
+      "fingerprint": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d",
+      "productSlug": "flashtrix",
+      "nonceBase64": "AAECAwQFBgcICQoL",
+      "ciphertextBase64": "14LWUNo0x0yfDxYKD9S9KxvVePga6gi9scdT89LRN9Q24SmrT7LFpxo6qsWCnobr"
+    },
+    {
+      "id": "flipped-bit",
+      "why": "One byte of the ciphertext changed.",
+      "fingerprint": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d",
+      "productSlug": "teampromanager",
+      "nonceBase64": "AAECAwQFBgcICQoL",
+      "ciphertextBase64": "1oLWUNo0x0yfDxYKD9S9KxvVePga6gi9scdT89LRN9Q24SmrT7LFpxo6qsWCnobr"
+    },
+    {
+      "id": "truncated",
+      "why": "A half-written file after a power cut.",
+      "fingerprint": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d",
+      "productSlug": "teampromanager",
+      "nonceBase64": "AAECAwQFBgcICQoL",
+      "ciphertextBase64": "14LWUNo0x0w="
+    }
+  ]
+}

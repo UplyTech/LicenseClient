@@ -1,0 +1,69 @@
+name: The editions disagree
+description: The same input produced different results in Python and TypeScript
+title: "fix: editions disagree on "
+labels: [edition-drift, bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most valuable report this repository can receive.
+
+        LicenseClient ships two editions that must produce identical results for
+        identical inputs. A case where they do not is both a bug and, per
+        SECURITY.md, a potential security issue.
+
+        **If the difference looks exploitable, do not open this issue.** Send it
+        to **security@uplytech.de** instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Both editions, if they differ - which would itself be the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: setup
+    attributes:
+      label: The configuration
+      description: In a serialised form, so both editions can be built from it.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: python
+    attributes:
+      label: What Python returned
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: typescript
+    attributes:
+      label: What TypeScript returned
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: magnitudes
+    attributes:
+      label: Magnitudes involved
+      description: >-
+        Optional, but it usually is the answer. Python integers are exact at any
+        size; JavaScript numbers stop being exact above 2^53 - 1. Any value near
+        or above that - including an *intermediate* product - is the first thing
+        to look at.
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: Both editions were on the same version.
+          required: true
+        - label: I have considered whether this difference could be exploited, and if so I sent it to security@uplytech.de instead.
+          required: true

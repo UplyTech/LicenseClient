@@ -1,0 +1,129 @@
+# Hand-maintained spelling vocabulary.
+#
+# Not here to correct prose. The point is the identifier that was misspelt once
+# and has been called that ever since - a check finds that, a read-through never
+# does. Everything below is a word that would otherwise drown that signal.
+#
+# Adding a word is a small decision with a long tail. The question to ask is
+# "would a reader be right to think this is a typo?" - if yes, it belongs in the
+# code differently, not here.
+
+# ---------------------------------------------------------------------------
+# The key alphabet, and the fixtures built from it.
+#
+# Crockford base32 with I, L, O and U removed. Every one of these is a run of
+# that alphabet appearing in a test or in the documentation of it, and none of
+# them is a word in any language.
+# ---------------------------------------------------------------------------
+AAEC
+Aaosy
+Bqfz
+FTXZZZZZZZZZZZZZZZE
+GHJKMNPQRSTVWXYZ
+Gpzb
+HJKMN
+HJKMNPQRSTVWXYZ
+Ijoz
+Ijpb
+Kvgaduymqxm
+PQRST
+Swib
+Tfrkh
+ULTTPM
+VWXYZ
+WTGHJKMNPQRSTVWXYZF
+YCRVFVAO
+YUCAJE
+vnwq
+zzoa
+
+# ---------------------------------------------------------------------------
+# Deliberately wrong keys, used to prove the check symbol rejects them.
+#
+# Spelling them correctly would delete the test.
+# ---------------------------------------------------------------------------
+AAAAI
+AAIAA
+ILOU
+IOIOI
+OIOIH
+OIOIO
+TOOLONG
+
+# ---------------------------------------------------------------------------
+# Test key material.
+#
+# The Ed25519 key pair the shared vectors are signed with. It is checked into a
+# repository, which disqualifies it from ever being anything but test material -
+# and that is said next to it wherever it appears.
+# ---------------------------------------------------------------------------
+AKKB
+BSKEs
+
+# ---------------------------------------------------------------------------
+# Operating system and platform names.
+#
+# Interfaces, tools and virtualisation markers the machine probe looks for. They
+# are what the operating system calls them, not what we chose.
+# ---------------------------------------------------------------------------
+AESGCM
+bochs
+dbus
+gethostname
+getpid
+HKLM
+ioreg
+urandom
+utun
+vboxnet
+veth
+vmnet
+
+# ---------------------------------------------------------------------------
+# Tooling and configuration keys.
+# ---------------------------------------------------------------------------
+addopts
+testpaths
+
+# ---------------------------------------------------------------------------
+# Identifiers this package chose.
+# ---------------------------------------------------------------------------
+bassboost
+CONFUSABLES
+vectobeat
+
+# ---------------------------------------------------------------------------
+# Words this repository spells deliberately.
+#
+# British forms, and coinages the prose uses more than once.
+# ---------------------------------------------------------------------------
+abortably
+serialiser
+unparseable
+
+# ---------------------------------------------------------------------------
+# German.
+#
+# Two places, both on purpose: the Discord bot example answers in the language
+# VectoBeat's users speak, because an example that reads as a real command
+# handler is worth more than one that reads as documentation; and one shared
+# vector carries a non-ASCII payload, which is the entire point of that vector -
+# it proves both editions serialise UTF-8 the same way rather than escaping it.
+# ---------------------------------------------------------------------------
+aktiviert
+bleibt
+dauerhaft
+Dauerbetrieb
+dazugehört
+gehören
+gehört
+Grüße
+jetzt
+Projekte
+Sprachkanal
+zeigt
+
+# ---------------------------------------------------------------------------
+# People.
+# ---------------------------------------------------------------------------
+Hauke

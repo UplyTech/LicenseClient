@@ -1,0 +1,60 @@
+name: Stale
+
+# Issues and pull requests nobody is working on any more.
+#
+# The exemptions matter more than the timings. Anything security-related never
+# goes stale, and neither does anything that is a release decision rather than
+# a bug - those sit open for months by design while somebody decides.
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+    name: Mark and close
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+          days-before-issue-stale: 60
+          days-before-issue-close: 14
+          stale-issue-label: stale
+          close-issue-label: no-activity
+          stale-issue-message: |
+            This issue has had no activity for 60 days.
+
+            If it is still relevant, a comment is enough to keep it open. It
+            will otherwise close in 14 days - reopening it later costs nothing.
+          close-issue-message: |
+            Closed after 74 days without activity. Reopen it or file a new one
+            if it comes back; neither is held against anybody.
+
+          days-before-pr-stale: 30
+          days-before-pr-close: 14
+          stale-pr-label: stale
+          close-pr-label: no-activity
+          stale-pr-message: |
+            This pull request has had no activity for 30 days.
+
+            A comment keeps it open. Drafts are exempt, so if it is still being
+            worked on, converting it to a draft is the better answer than a
+            comment every month.
+          close-pr-message: |
+            Closed after 44 days without activity. The branch is untouched, so
+            reopening loses nothing.
+
+          exempt-issue-labels: pinned,security,edition-drift,keep-active,breaking-change
+          exempt-pr-labels: pinned,security,edition-drift,keep-active,breaking-change,dependencies
+          exempt-draft-pr: true
+          operations-per-run: 100
+          ascending: true

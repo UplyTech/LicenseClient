@@ -1,0 +1,410 @@
+{
+  "formatVersion": 1,
+  "description": "The state machine that decides whether the application may run. Pure: a cached snapshot plus a clock in, one state out. Both editions must agree on every case, because a disagreement means one platform locks a paying customer out while the other lets a revoked licence keep running.",
+  "notes": [
+    "Times are ISO 8601 with an offset. The evaluator works in UTC.",
+    "'now' is what the machine's clock says. 'clockHighWater' is the latest time this installation has ever seen, kept inside the encrypted cache.",
+    "A snapshot of null means there is no cache at all."
+  ],
+  "cases": [
+    {
+      "id": "no-cache",
+      "why": "Nothing stored yet, or the file was unreadable and discarded.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "snapshot": null,
+      "expect": { "state": "NOT_ACTIVATED", "reason": "no_license", "canRun": false }
+    },
+    {
+      "id": "active-well-inside-everything",
+      "why": "The ordinary case: checked in this morning, subscription runs for months.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true, "shouldCheckIn": false }
+    },
+    {
+      "id": "active-but-a-check-is-due",
+      "why": "Still valid, but past nextCheckAfter - the client should call home without blocking the user.",
+      "now": "2026-03-02T08:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true, "shouldCheckIn": true }
+    },
+    {
+      "id": "offline-window-exhausted",
+      "why": "A week without contact. The grace period covers connection trouble, and it has run out.",
+      "now": "2026-03-09T12:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_OFFLINE", "reason": "offline_too_long", "canRun": false, "shouldCheckIn": true }
+    },
+    {
+      "id": "offline-window-boundary-one-second-before",
+      "why": "The day boundary is where off-by-one errors live. One second before the deadline still runs.",
+      "now": "2026-03-08T08:59:59+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true, "shouldCheckIn": true }
+    },
+    {
+      "id": "offline-window-boundary-exactly-on-it",
+      "why": "Exactly on the deadline still counts as valid: the server wrote 'valid until', not 'valid before'.",
+      "now": "2026-03-08T09:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true, "shouldCheckIn": true }
+    },
+    {
+      "id": "expired-licence-locks-immediately",
+      "why": "An expired contract is not a connection problem. The offline window must not extend it.",
+      "now": "2027-01-02T00:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2027-01-05T00:00:00+00:00",
+        "nextCheckAfter": "2027-01-01T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-12-29T00:00:00+00:00",
+        "clockHighWater": "2026-12-29T00:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_EXPIRED", "reason": "expired", "canRun": false, "shouldCheckIn": true }
+    },
+    {
+      "id": "revoked-locks-even-inside-the-offline-window",
+      "why": "The last answer from the server said revoked. Nothing in the cache may soften that.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "snapshot": {
+        "status": "revoked",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_REVOKED", "reason": "revoked", "canRun": false, "shouldCheckIn": true }
+    },
+    {
+      "id": "suspended-locks",
+      "why": "An unpaid invoice suspends the licence. Same handling as revoked, different message.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "snapshot": {
+        "status": "suspended",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_SUSPENDED", "reason": "suspended", "canRun": false, "shouldCheckIn": true }
+    },
+    {
+      "id": "trialing-runs-like-active",
+      "why": "A trial is a licence with an end date, not a special case in the runtime.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "snapshot": {
+        "status": "trialing",
+        "notBefore": "2026-02-25T00:00:00+00:00",
+        "expiresAt": "2026-03-11T00:00:00+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true, "shouldCheckIn": false }
+    },
+    {
+      "id": "not-yet-started",
+      "why": "A licence sold in advance. Running before its start date is not allowed.",
+      "now": "2025-12-31T12:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-01-08T00:00:00+00:00",
+        "nextCheckAfter": "2026-01-02T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2025-12-31T00:00:00+00:00",
+        "clockHighWater": "2025-12-31T00:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_NOT_YET_VALID", "reason": "not_yet_valid", "canRun": false, "shouldCheckIn": true }
+    },
+    {
+      "id": "cache-belongs-to-another-machine",
+      "why": "The whole copy protection: a licence file carried to a second computer must not run there.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "bb",
+      "expect": { "state": "LOCKED_WRONG_DEVICE", "reason": "fingerprint_mismatch", "canRun": false, "shouldCheckIn": true }
+    },
+    {
+      "id": "perpetual-licence-never-expires",
+      "why": "A template bought once. expiresAt is null and must not be read as 'expired at the epoch'.",
+      "now": "2031-06-01T12:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": null,
+        "offlineValidUntil": "2031-06-08T00:00:00+00:00",
+        "nextCheckAfter": "2031-06-02T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2031-06-01T00:00:00+00:00",
+        "clockHighWater": "2031-06-01T00:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true, "shouldCheckIn": false }
+    },
+    {
+      "id": "seatless-licence-has-no-fingerprint-to-match",
+      "why": "A guild licence never binds a device. A null fingerprint in the snapshot must not be read as a mismatch.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "notBefore": "2026-01-01T00:00:00+00:00",
+        "expiresAt": "2026-12-31T23:59:59+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": null
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true, "shouldCheckIn": false }
+    },
+    {
+      "id": "perpetual-inside-its-update-window",
+      "why": "A perpetual licence for the 2.x line, running 2.3.1. The window is the thing that was bought, and it holds.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "appVersion": "2.3.1",
+      "snapshot": {
+        "status": "active",
+        "type": "perpetual",
+        "expiresAt": null,
+        "maxVersion": "2.4.0",
+        "offlineValidUntil": "2026-06-01T00:00:00+00:00",
+        "nextCheckAfter": "2026-03-08T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true }
+    },
+    {
+      "id": "perpetual-exactly-at-its-cap",
+      "why": "'Up to and including'. An off-by-one here locks out everybody who bought the current release, on the day it ships.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "appVersion": "2.4.0",
+      "snapshot": {
+        "status": "active",
+        "type": "perpetual",
+        "expiresAt": null,
+        "maxVersion": "2.4.0",
+        "offlineValidUntil": "2026-06-01T00:00:00+00:00",
+        "nextCheckAfter": "2026-03-08T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true }
+    },
+    {
+      "id": "perpetual-past-its-update-window",
+      "why": "The gap this state was added to close. Everything about the licence is fine - it never expires - and the build is simply not one it covers.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "appVersion": "3.0.0",
+      "snapshot": {
+        "status": "active",
+        "type": "perpetual",
+        "expiresAt": null,
+        "maxVersion": "2.4.0",
+        "offlineValidUntil": "2026-06-01T00:00:00+00:00",
+        "nextCheckAfter": "2026-03-08T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_VERSION", "reason": "version_not_covered", "canRun": false, "shouldCheckIn": true }
+    },
+    {
+      "id": "update-window-and-the-ten-nine-trap",
+      "why": "A licence capped at 1.9.0 running 1.10.0. Compared as strings this reads as allowed, and it would stay wrong for as long as the product kept shipping minor releases.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "appVersion": "1.10.0",
+      "snapshot": {
+        "status": "active",
+        "type": "perpetual",
+        "expiresAt": null,
+        "maxVersion": "1.9.0",
+        "offlineValidUntil": "2026-06-01T00:00:00+00:00",
+        "nextCheckAfter": "2026-03-08T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_VERSION", "reason": "version_not_covered", "canRun": false }
+    },
+    {
+      "id": "revocation-outranks-the-update-window",
+      "why": "Both apply. The server's own decision has to be the one reported, or a revoked licence would show a message about upgrading.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "appVersion": "3.0.0",
+      "snapshot": {
+        "status": "revoked",
+        "type": "perpetual",
+        "expiresAt": null,
+        "maxVersion": "2.4.0",
+        "offlineValidUntil": "2026-06-01T00:00:00+00:00",
+        "nextCheckAfter": "2026-03-08T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_REVOKED", "reason": "revoked", "canRun": false }
+    },
+    {
+      "id": "the-update-window-outranks-the-offline-window",
+      "why": "The other side of the same ordering. 'You bought the 2.x line' is something the seller decided; a stale offline window is a network problem, and reporting the network one would send the customer to reconnect for nothing.",
+      "now": "2026-08-01T12:00:00+00:00",
+      "appVersion": "3.0.0",
+      "snapshot": {
+        "status": "active",
+        "type": "perpetual",
+        "expiresAt": null,
+        "maxVersion": "2.4.0",
+        "offlineValidUntil": "2026-06-01T00:00:00+00:00",
+        "nextCheckAfter": "2026-03-08T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "LOCKED_VERSION", "reason": "version_not_covered", "canRun": false }
+    },
+    {
+      "id": "no-cap-on-a-subscription",
+      "why": "A subscription has no update window, and a client running a version far above anything the licence names must not be locked.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "appVersion": "99.0.0",
+      "snapshot": {
+        "status": "active",
+        "maxVersion": null,
+        "expiresAt": "2026-12-31T00:00:00+00:00",
+        "offlineValidUntil": "2026-03-08T09:00:00+00:00",
+        "nextCheckAfter": "2026-03-01T21:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true }
+    },
+    {
+      "id": "a-caller-that-does-not-say-which-version-it-is",
+      "why": "No appVersion at all. The check is skipped rather than guessed, so an embedding that never passes one keeps working exactly as it did.",
+      "now": "2026-03-01T12:00:00+00:00",
+      "snapshot": {
+        "status": "active",
+        "type": "perpetual",
+        "expiresAt": null,
+        "maxVersion": "2.4.0",
+        "offlineValidUntil": "2026-06-01T00:00:00+00:00",
+        "nextCheckAfter": "2026-03-08T00:00:00+00:00",
+        "gracePeriodDays": 7,
+        "lastCheckAt": "2026-03-01T09:00:00+00:00",
+        "clockHighWater": "2026-03-01T09:00:00+00:00",
+        "deviceFingerprint": "aa"
+      },
+      "fingerprint": "aa",
+      "expect": { "state": "ACTIVE", "reason": null, "canRun": true }
+    }
+  ]
+}

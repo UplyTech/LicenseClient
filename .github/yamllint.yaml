@@ -1,0 +1,31 @@
+# yamllint, over .github/
+#
+# The rules are deliberately loose. A GitHub workflow is long, deeply nested,
+# and has lines that cannot sensibly be wrapped - none of that is a quality
+# problem. What is left is the mistake that makes a file mean something other
+# than it looks like it means: a duplicate key, broken indentation, a tab.
+
+extends: default
+
+rules:
+  # A workflow comment explains a decision and rarely fits in eighty columns.
+  # Length is not a quality here.
+  line-length: disable
+  # In a GitHub workflow `on:` is a key, not a boolean.
+  truthy:
+    allowed-values: ["true", "false"]
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  document-start: disable
+  # A duplicate key is the mistake nobody sees, and it lets the second
+  # definition win in silence.
+  key-duplicates: enable
+  indentation:
+    spaces: consistent
+    indent-sequences: consistent
+  braces:
+    max-spaces-inside: 1
+  brackets:
+    max-spaces-inside: 1

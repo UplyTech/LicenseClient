@@ -1,0 +1,126 @@
+# The labels this repository has, as a file.
+#
+# Synced by .github/workflows/labels.yml. Several are load-bearing: the stale
+# bot exempts some of them, and pr.yml applies the size/* set. Renaming one in
+# the sidebar switches an automation off silently, which is why the list lives
+# here.
+
+# -- what kind of thing it is -------------------------------------------------
+- name: bug
+  color: d73a4a
+  description: Something computes the wrong answer
+
+- name: edition-drift
+  color: b60205
+  description: The Python and the TypeScript edition disagree. Never goes stale.
+
+- name: enhancement
+  color: a2eeef
+  description: A new capability inside the library's boundaries
+
+- name: out-of-scope
+  color: e4e669
+  description: Outside what this library is for - see CONTRIBUTING.md
+
+- name: documentation
+  color: 0075ca
+  description: README, examples, docstrings
+
+- name: question
+  color: d876e3
+  description: A question about using the library
+
+- name: crypto
+  color: b60205
+  description: Signature, canonical JSON or key handling - never merged on one review
+
+- name: offline
+  color: c2e0c6
+  description: Behaviour when the licence server cannot be reached
+
+# -- which part ---------------------------------------------------------------
+- name: python
+  color: 3572a5
+  description: The Python edition
+
+- name: typescript
+  color: 3178c6
+  description: The TypeScript edition
+
+- name: core
+  color: 5319e7
+  description: The mechanism the library rests on
+
+- name: shared-vectors
+  color: 5319e7
+  description: The contract between the two editions
+
+- name: tests
+  color: 0e8a16
+  description: Test suites and coverage
+
+- name: ci
+  color: 1d76db
+  description: Workflows and automation
+
+- name: dependencies
+  color: 0366d6
+  description: Dependency updates
+
+# -- process ------------------------------------------------------------------
+- name: security
+  color: b60205
+  description: Reported through SECURITY.md. Never goes stale.
+
+- name: breaking-change
+  color: b60205
+  description: Requires a major version
+
+- name: good first issue
+  color: 7057ff
+  description: Small, self-contained, and well described
+
+- name: help wanted
+  color: 008672
+  description: Somebody outside the maintainers could pick this up
+
+- name: pinned
+  color: ededed
+  description: Never goes stale
+
+- name: keep-active
+  color: ededed
+  description: Never goes stale
+
+- name: stale
+  color: 795548
+  description: No activity for a while
+
+- name: no-activity
+  color: 795548
+  description: Closed for lack of activity
+
+- name: duplicate
+  color: cfd3d7
+  description: Already tracked elsewhere
+
+- name: wontfix
+  color: ffffff
+  description: A deliberate decision not to change this
+
+# -- size, applied by pr.yml --------------------------------------------------
+- name: size/xs
+  color: 3cbf00
+  description: Up to 20 lines
+- name: size/s
+  color: 5d9801
+  description: Up to 100 lines
+- name: size/m
+  color: 7f7203
+  description: Up to 400 lines
+- name: size/l
+  color: a14c05
+  description: Up to 1000 lines
+- name: size/xl
+  color: c32607
+  description: More than 1000 lines

@@ -1,0 +1,47 @@
+# The release draft is kept up to date continuously, not written on the day of
+# the tag.
+#
+# Whoever starts collecting notes on release day copies out the list of merged
+# titles. Whoever keeps them as they go has something on release day that a
+# person can read.
+
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+
+categories:
+  - title: "Breaking"
+    labels: [breaking-change]
+  - title: "The editions agree again"
+    labels: [edition-drift]
+  - title: "Added"
+    labels: [enhancement]
+  - title: "Fixed"
+    labels: [bug]
+  - title: "Security"
+    labels: [security]
+  - title: "Documentation"
+    labels: [documentation]
+  - title: "Internal"
+    labels: [ci, tests, dependencies]
+
+exclude-labels: [duplicate, wontfix, no-activity]
+
+# The version follows from the labels rather than from a guess.
+version-resolver:
+  major:
+    labels: [breaking-change]
+  minor:
+    labels: [enhancement]
+  patch:
+    labels: [bug, security, documentation, ci, tests, dependencies]
+  default: patch
+
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+no-changes-template: "- Nothing a caller will notice."
+
+template: |
+  $CHANGES
+
+  ---
+
+  **Full comparison:** $PREVIOUS_TAG...v$RESOLVED_VERSION

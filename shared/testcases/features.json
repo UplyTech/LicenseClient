@@ -1,0 +1,90 @@
+{
+  "formatVersion": 1,
+  "description": "Feature lookup. The application asks 'may I show the time tracking?' and gets one boolean. Patterns exist so a tier can grant a whole area without listing every switch in it.",
+  "notes": [
+    "Matching is exact unless the granted entry ends in '*', which matches any suffix including the empty one.",
+    "A '*' on its own grants everything. Used by the enterprise tier of some products.",
+    "The wildcard is only ever on the granted side. A query is always a literal name - otherwise an application could ask 'do I have anything?' and get a yes."
+  ],
+  "cases": [
+    {
+      "id": "exact-hit",
+      "granted": ["teams", "tasks", "time_tracking"],
+      "query": "time_tracking",
+      "expect": true
+    },
+    {
+      "id": "exact-miss",
+      "granted": ["teams", "tasks"],
+      "query": "time_tracking",
+      "expect": false
+    },
+    {
+      "id": "empty-grant",
+      "why": "The free tier with nothing enabled, or a licence that failed to load.",
+      "granted": [],
+      "query": "teams",
+      "expect": false
+    },
+    {
+      "id": "prefix-wildcard",
+      "granted": ["export.*"],
+      "query": "export.csv",
+      "expect": true
+    },
+    {
+      "id": "prefix-wildcard-matches-the-bare-stem",
+      "why": "'export.*' should also answer 'export.' - the empty suffix is a suffix.",
+      "granted": ["export.*"],
+      "query": "export.",
+      "expect": true
+    },
+    {
+      "id": "prefix-wildcard-does-not-match-the-stem-without-its-separator",
+      "why": "'export.*' grants things under export, not the literal name 'export'. Being strict here keeps the tier tables honest.",
+      "granted": ["export.*"],
+      "query": "export",
+      "expect": false
+    },
+    {
+      "id": "prefix-wildcard-does-not-leak-sideways",
+      "why": "'export.*' must not grant 'exportable' - a wildcard is not a substring search.",
+      "granted": ["export.*"],
+      "query": "exportable",
+      "expect": false
+    },
+    {
+      "id": "grant-everything",
+      "granted": ["*"],
+      "query": "anything.at.all",
+      "expect": true
+    },
+    {
+      "id": "grant-everything-answers-an-empty-query-as-false",
+      "why": "An empty feature name is a bug in the caller, not an entitlement.",
+      "granted": ["*"],
+      "query": "",
+      "expect": false
+    },
+    {
+      "id": "query-is-case-sensitive",
+      "why": "Feature names come from the tier table and are always lower case. Folding case here would hide typos in that table.",
+      "granted": ["time_tracking"],
+      "query": "Time_Tracking",
+      "expect": false
+    },
+    {
+      "id": "a-star-inside-the-query-is-a-literal",
+      "why": "Only the granted side may carry a wildcard.",
+      "granted": ["export.csv"],
+      "query": "export.*",
+      "expect": false
+    },
+    {
+      "id": "several-grants-one-hit",
+      "granted": ["teams", "tasks", "export.*", "sso"],
+      "query": "export.pdf",
+      "expect": true
+    }
+  ]
+}

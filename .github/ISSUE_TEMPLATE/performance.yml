@@ -1,0 +1,47 @@
+name: Performance
+description: A call takes disproportionately long
+title: "perf: "
+labels: [performance]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LicenseClient computes and stores nothing. When a call takes a long time it
+        is almost always the size of the input - and that is a number, so it
+        belongs in the report.
+
+        SECURITY.md counts an input that makes a call take unreasonably long as
+        a security issue. If you think it can be exploited, send it to
+        security@uplytech.de instead of opening this.
+
+  - type: input
+    id: call
+    attributes:
+      label: Which call
+    validations:
+      required: true
+
+  - type: input
+    id: size
+    attributes:
+      label: How large the input is
+      description: Number of rows, number of levels, size of the numbers - whichever applies.
+    validations:
+      required: true
+
+  - type: input
+    id: duration
+    attributes:
+      label: How long it takes
+      placeholder: "about 8 seconds"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: To reproduce
+      description: Best as a snippet that builds the input itself.
+      render: python
+    validations:
+      required: true

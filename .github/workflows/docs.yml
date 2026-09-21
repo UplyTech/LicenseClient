@@ -1,0 +1,74 @@
+name: Docs
+
+# Documentation that is wrong is worse than none.
+#
+# Three ways it can be wrong are checkable rather than believable: a dead link,
+# a misspelt identifier, and an example in the README that no longer runs. The
+# third matters most - it is the first thing anybody tries.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # A link dies without anybody here changing anything.
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  links:
+    name: Links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dead links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: "yes"
+          use-verbose-mode: "yes"
+          config-file: .github/markdown-link-check.json
+          # In a pull request only the changed files, so that somebody else's
+          # site having a hiccup does not hold up a merge. Everything on the
+          # scheduled run.
+          check-modified-files-only: ${{ github.event_name == 'pull_request' && 'yes' || 'no' }}
+
+  spelling:
+    name: Spelling
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node
+        with:
+          install: "false"
+
+      # Not here to correct prose. The point is the identifier that was
+      # misspelt once and has been called that ever since.
+      - name: cspell
+        run: npx --yes cspell@latest --config .github/cspell.json --no-progress --show-suggestions "**"
+
+  examples:
+    name: The README examples still hold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-python
+      - uses: ./.github/actions/setup-node
+        with:
+          build: "true"
+
+      # ci.yml runs the files under examples/. This is about the snippets *in*
+      # the README: those are what somebody reads first, and the only
+      # documentation nothing else executes.
+      - name: Every imported name exists
+        env:
+          PYTHON: python
+        run: node .github/scripts/check-docs.mjs

@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: mailto:security@uplytech.de
+    about: >-
+      Never a public issue. See SECURITY.md for what counts and what to include.
+
+  - name: Question about using the library
+    url: https://github.com/uplytech/licenseclient/discussions
+    about: 'A "how do I ...?" is a discussion, not an issue.'

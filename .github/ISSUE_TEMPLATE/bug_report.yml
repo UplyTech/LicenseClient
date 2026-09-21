@@ -1,0 +1,68 @@
+name: Bug report
+description: Something computed the wrong answer, or a call failed that should not have
+title: "fix: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste a real licence, a private key or a signing key.** A licence is a signed credential; a redacted example or a licence issued against a throwaway key is enough to reproduce anything here.
+
+        Say which verification step failed, and what the client reported.
+
+  - type: dropdown
+    id: edition
+    attributes:
+      label: Edition
+      options:
+        - Python (uplytech-license-client)
+        - TypeScript (@uplytech/license-client)
+        - Both
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`uplytech_license.__version__` or the version in your package.json"
+    validations:
+      required: true
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: The configuration
+      description: How you built the object, in a form somebody can paste and run.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: call
+    attributes:
+      label: The call
+      description: The call itself, with every argument.
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    id: expectation
+    attributes:
+      label: What you expected, and what you got
+      placeholder: |
+        Expected: ...
+        Got:      ...
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Before submitting
+      options:
+        - label: This is about what the library computes, not about how it is used - see the boundaries in CONTRIBUTING.md.
+          required: true
+        - label: I am not reporting a security problem. Those go to security@uplytech.de, see SECURITY.md.
+          required: true

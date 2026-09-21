@@ -1,0 +1,98 @@
+{
+  "formatVersion": 1,
+  "description": "Ed25519 detached envelopes. The client holds only the public key; a shared secret would let anyone who unpacks the application issue themselves a licence.",
+  "notes": [
+    "The signature covers the base64url-DECODED payload bytes. Verifying against a re-serialised object is the one mistake that breaks this pattern, and it breaks it silently.",
+    "The public key is 32 raw bytes, base64url without padding. Node needs it wrapped in a DER SPKI header (302a300506032b6570032100) to build a KeyObject; that is fourteen bytes of prefix and no dependency."
+  ],
+  "publicKey": "vnwq-7KvgaduymqxmJlYEz7C3UP-TfrkhB-zzoaQG7c",
+  "keyId": "lk_test_2026",
+  "valid": {
+    "id": "genuine-envelope",
+    "envelope": {
+      "alg": "Ed25519",
+      "key_id": "lk_test_2026",
+      "payload": "eyJkZXZpY2VfZmluZ2VycHJpbnQiOiIwZGEwNDE3NTExNzZjNDAyNGRlNDA5ODAyYzY5NDY3YmQyYTQ3MzY2YzcwNTgxNWRjM2FjYzUzMzliMWE4NzNkIiwiZXhwaXJlc19hdCI6IjIwMjYtMTItMzFUMjM6NTk6NTkrMDA6MDAiLCJmZWF0dXJlcyI6WyJ0ZWFtcyIsInRhc2tzIiwidGltZV90cmFja2luZyJdLCJncmFjZV9wZXJpb2RfZGF5cyI6NywibGljZW5zZV9pZCI6ImxpY18yZjhhMWMiLCJuZXh0X2NoZWNrX2FmdGVyIjoiMjAyNi0wMy0wMVQyMTowMDowMCswMDowMCIsIm5vbmNlIjoibm9uY2UtMDEyMzQ1Njc4OSIsIm9mZmxpbmVfdmFsaWRfdW50aWwiOiIyMDI2LTAzLTA4VDA5OjAwOjAwKzAwOjAwIiwicHJvZHVjdCI6InRlYW1wcm9tYW5hZ2VyIiwic2VydmVyX3RpbWUiOiIyMDI2LTAzLTAxVDA5OjAwOjAwKzAwOjAwIiwic3RhdHVzIjoiYWN0aXZlIiwidGllciI6InBybyIsInYiOjF9",
+      "signature": "dCVc4xkVlxyUO2my_tPi2e3GSJhaffTiR3FcgM7OE-pTcEvIzPxWcvlLlvYIcO0gQI6r4Mvp9Vu59_AWOL93Bg"
+    },
+    "expectPayload": {
+      "v": 1,
+      "license_id": "lic_2f8a1c",
+      "product": "teampromanager",
+      "tier": "pro",
+      "status": "active",
+      "features": [
+        "teams",
+        "tasks",
+        "time_tracking"
+      ],
+      "device_fingerprint": "0da041751176c4024de409802c69467bd2a47366c705815dc3acc5339b1a873d",
+      "expires_at": "2026-12-31T23:59:59+00:00",
+      "offline_valid_until": "2026-03-08T09:00:00+00:00",
+      "next_check_after": "2026-03-01T21:00:00+00:00",
+      "grace_period_days": 7,
+      "server_time": "2026-03-01T09:00:00+00:00",
+      "nonce": "nonce-0123456789"
+    }
+  },
+  "invalid": [
+    {
+      "id": "tampered-payload",
+      "why": "The tier was raised from pro to enterprise. Same signature, different payload.",
+      "envelope": {
+        "alg": "Ed25519",
+        "key_id": "lk_test_2026",
+        "payload": "eyJkZXZpY2VfZmluZ2VycHJpbnQiOiIwZGEwNDE3NTExNzZjNDAyNGRlNDA5ODAyYzY5NDY3YmQyYTQ3MzY2YzcwNTgxNWRjM2FjYzUzMzliMWE4NzNkIiwiZXhwaXJlc19hdCI6IjIwMjYtMTItMzFUMjM6NTk6NTkrMDA6MDAiLCJmZWF0dXJlcyI6WyJ0ZWFtcyIsInRhc2tzIiwidGltZV90cmFja2luZyJdLCJncmFjZV9wZXJpb2RfZGF5cyI6NywibGljZW5zZV9pZCI6ImxpY18yZjhhMWMiLCJuZXh0X2NoZWNrX2FmdGVyIjoiMjAyNi0wMy0wMVQyMTowMDowMCswMDowMCIsIm5vbmNlIjoibm9uY2UtMDEyMzQ1Njc4OSIsIm9mZmxpbmVfdmFsaWRfdW50aWwiOiIyMDI2LTAzLTA4VDA5OjAwOjAwKzAwOjAwIiwicHJvZHVjdCI6InRlYW1wcm9tYW5hZ2VyIiwic2VydmVyX3RpbWUiOiIyMDI2LTAzLTAxVDA5OjAwOjAwKzAwOjAwIiwic3RhdHVzIjoiYWN0aXZlIiwidGllciI6ImVudGVycHJpc2UiLCJ2IjoxfQ",
+        "signature": "dCVc4xkVlxyUO2my_tPi2e3GSJhaffTiR3FcgM7OE-pTcEvIzPxWcvlLlvYIcO0gQI6r4Mvp9Vu59_AWOL93Bg"
+      }
+    },
+    {
+      "id": "signed-by-another-key",
+      "why": "A valid signature - by the wrong signer.",
+      "envelope": {
+        "alg": "Ed25519",
+        "key_id": "lk_test_2026",
+        "payload": "eyJkZXZpY2VfZmluZ2VycHJpbnQiOiIwZGEwNDE3NTExNzZjNDAyNGRlNDA5ODAyYzY5NDY3YmQyYTQ3MzY2YzcwNTgxNWRjM2FjYzUzMzliMWE4NzNkIiwiZXhwaXJlc19hdCI6IjIwMjYtMTItMzFUMjM6NTk6NTkrMDA6MDAiLCJmZWF0dXJlcyI6WyJ0ZWFtcyIsInRhc2tzIiwidGltZV90cmFja2luZyJdLCJncmFjZV9wZXJpb2RfZGF5cyI6NywibGljZW5zZV9pZCI6ImxpY18yZjhhMWMiLCJuZXh0X2NoZWNrX2FmdGVyIjoiMjAyNi0wMy0wMVQyMTowMDowMCswMDowMCIsIm5vbmNlIjoibm9uY2UtMDEyMzQ1Njc4OSIsIm9mZmxpbmVfdmFsaWRfdW50aWwiOiIyMDI2LTAzLTA4VDA5OjAwOjAwKzAwOjAwIiwicHJvZHVjdCI6InRlYW1wcm9tYW5hZ2VyIiwic2VydmVyX3RpbWUiOiIyMDI2LTAzLTAxVDA5OjAwOjAwKzAwOjAwIiwic3RhdHVzIjoiYWN0aXZlIiwidGllciI6InBybyIsInYiOjF9",
+        "signature": "LKUUa7nj4hTkJe5TtNn0GTJ7rAZgriqChL7BRQsO8pzGX2w9mCcjv1Mxldt4GtDpcK7_DwkYUCAJE7tMFI-FBg"
+      }
+    },
+    {
+      "id": "unknown-key-id",
+      "why": "A key id the client does not ship. Never guess; fail.",
+      "envelope": {
+        "alg": "Ed25519",
+        "key_id": "lk_someone_elses",
+        "payload": "eyJkZXZpY2VfZmluZ2VycHJpbnQiOiIwZGEwNDE3NTExNzZjNDAyNGRlNDA5ODAyYzY5NDY3YmQyYTQ3MzY2YzcwNTgxNWRjM2FjYzUzMzliMWE4NzNkIiwiZXhwaXJlc19hdCI6IjIwMjYtMTItMzFUMjM6NTk6NTkrMDA6MDAiLCJmZWF0dXJlcyI6WyJ0ZWFtcyIsInRhc2tzIiwidGltZV90cmFja2luZyJdLCJncmFjZV9wZXJpb2RfZGF5cyI6NywibGljZW5zZV9pZCI6ImxpY18yZjhhMWMiLCJuZXh0X2NoZWNrX2FmdGVyIjoiMjAyNi0wMy0wMVQyMTowMDowMCswMDowMCIsIm5vbmNlIjoibm9uY2UtMDEyMzQ1Njc4OSIsIm9mZmxpbmVfdmFsaWRfdW50aWwiOiIyMDI2LTAzLTA4VDA5OjAwOjAwKzAwOjAwIiwicHJvZHVjdCI6InRlYW1wcm9tYW5hZ2VyIiwic2VydmVyX3RpbWUiOiIyMDI2LTAzLTAxVDA5OjAwOjAwKzAwOjAwIiwic3RhdHVzIjoiYWN0aXZlIiwidGllciI6InBybyIsInYiOjF9",
+        "signature": "dCVc4xkVlxyUO2my_tPi2e3GSJhaffTiR3FcgM7OE-pTcEvIzPxWcvlLlvYIcO0gQI6r4Mvp9Vu59_AWOL93Bg"
+      }
+    },
+    {
+      "id": "wrong-algorithm",
+      "why": "An envelope claiming an algorithm this library does not implement must be refused, not ignored.",
+      "envelope": {
+        "alg": "HS256",
+        "key_id": "lk_test_2026",
+        "payload": "eyJkZXZpY2VfZmluZ2VycHJpbnQiOiIwZGEwNDE3NTExNzZjNDAyNGRlNDA5ODAyYzY5NDY3YmQyYTQ3MzY2YzcwNTgxNWRjM2FjYzUzMzliMWE4NzNkIiwiZXhwaXJlc19hdCI6IjIwMjYtMTItMzFUMjM6NTk6NTkrMDA6MDAiLCJmZWF0dXJlcyI6WyJ0ZWFtcyIsInRhc2tzIiwidGltZV90cmFja2luZyJdLCJncmFjZV9wZXJpb2RfZGF5cyI6NywibGljZW5zZV9pZCI6ImxpY18yZjhhMWMiLCJuZXh0X2NoZWNrX2FmdGVyIjoiMjAyNi0wMy0wMVQyMTowMDowMCswMDowMCIsIm5vbmNlIjoibm9uY2UtMDEyMzQ1Njc4OSIsIm9mZmxpbmVfdmFsaWRfdW50aWwiOiIyMDI2LTAzLTA4VDA5OjAwOjAwKzAwOjAwIiwicHJvZHVjdCI6InRlYW1wcm9tYW5hZ2VyIiwic2VydmVyX3RpbWUiOiIyMDI2LTAzLTAxVDA5OjAwOjAwKzAwOjAwIiwic3RhdHVzIjoiYWN0aXZlIiwidGllciI6InBybyIsInYiOjF9",
+        "signature": "dCVc4xkVlxyUO2my_tPi2e3GSJhaffTiR3FcgM7OE-pTcEvIzPxWcvlLlvYIcO0gQI6r4Mvp9Vu59_AWOL93Bg"
+      }
+    },
+    {
+      "id": "empty-signature",
+      "envelope": {
+        "alg": "Ed25519",
+        "key_id": "lk_test_2026",
+        "payload": "eyJkZXZpY2VfZmluZ2VycHJpbnQiOiIwZGEwNDE3NTExNzZjNDAyNGRlNDA5ODAyYzY5NDY3YmQyYTQ3MzY2YzcwNTgxNWRjM2FjYzUzMzliMWE4NzNkIiwiZXhwaXJlc19hdCI6IjIwMjYtMTItMzFUMjM6NTk6NTkrMDA6MDAiLCJmZWF0dXJlcyI6WyJ0ZWFtcyIsInRhc2tzIiwidGltZV90cmFja2luZyJdLCJncmFjZV9wZXJpb2RfZGF5cyI6NywibGljZW5zZV9pZCI6ImxpY18yZjhhMWMiLCJuZXh0X2NoZWNrX2FmdGVyIjoiMjAyNi0wMy0wMVQyMTowMDowMCswMDowMCIsIm5vbmNlIjoibm9uY2UtMDEyMzQ1Njc4OSIsIm9mZmxpbmVfdmFsaWRfdW50aWwiOiIyMDI2LTAzLTA4VDA5OjAwOjAwKzAwOjAwIiwicHJvZHVjdCI6InRlYW1wcm9tYW5hZ2VyIiwic2VydmVyX3RpbWUiOiIyMDI2LTAzLTAxVDA5OjAwOjAwKzAwOjAwIiwic3RhdHVzIjoiYWN0aXZlIiwidGllciI6InBybyIsInYiOjF9",
+        "signature": ""
+      }
+    },
+    {
+      "id": "payload-is-not-json",
+      "envelope": {
+        "alg": "Ed25519",
+        "key_id": "lk_test_2026",
+        "payload": "bm90IGpzb24gYXQgYWxs",
+        "signature": "dCVc4xkVlxyUO2my_tPi2e3GSJhaffTiR3FcgM7OE-pTcEvIzPxWcvlLlvYIcO0gQI6r4Mvp9Vu59_AWOL93Bg"
+      }
+    }
+  ]
+}

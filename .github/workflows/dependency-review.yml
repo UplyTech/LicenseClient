@@ -1,0 +1,32 @@
+name: Dependency review
+
+# A pull request that adds a dependency is reviewed for it before it is merged,
+# not after it is released. security.yml checks the dependency list on main;
+# this checks it at the point where somebody would change it, which is the only
+# point where changing it back is cheap.
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          # MIT in, MIT out. A copyleft dependency in a library that other
+          # people ship inside their own products is a licensing problem for
+          # them, not for us - which is exactly why it has to be caught here.
+          allow-licenses: MIT, ISC, BSD-2-Clause, BSD-3-Clause, Apache-2.0, 0BSD, CC0-1.0, Python-2.0, PSF-2.0, Unlicense, BlueOak-1.0.0
+          comment-summary-in-pr: on-failure
