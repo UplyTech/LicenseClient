@@ -138,7 +138,7 @@ jobs:
       # Trusted publishing. No token is stored anywhere.
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-artefacts
           path: artefacts
@@ -162,7 +162,7 @@ jobs:
       # rather than a promise in a README.
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-artefacts
           path: artefacts
@@ -191,7 +191,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: release-artefacts
           path: artefacts
