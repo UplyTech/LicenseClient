@@ -6,7 +6,8 @@
     "working perfectly well in a browser."
   ],
   "ignorePatterns": [
-    { "pattern": "^https://github\\.com/uplytech/" },
+    { "pattern": "^https://github\\.com/[Uu]ply[Tt]ech/" },
+    { "pattern": "^\\.\\./" },
     { "pattern": "^https://pypi\\.org/project/" },
     { "pattern": "^https://www\\.npmjs\\.com/package/" },
     { "pattern": "^mailto:" },
