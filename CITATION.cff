@@ -12,7 +12,7 @@ type: software
 authors:
   - name: UplyTech
     email: dev@uplytech.de
-    website: "https://uplytech.de"
+    website: "https://www.uplytech.de"
 repository-code: "https://github.com/uplytech/licenseclient"
 url: "https://github.com/uplytech/licenseclient"
 license: MIT
