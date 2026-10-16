@@ -1,79 +1,39 @@
 # Repository settings the workflows assume
 
-Everything in `.github/` is committed, so it can be reviewed. Four things cannot
-be - they live in the repository's settings, and a workflow that assumes them
-fails at the least helpful moment if they are missing. This is that list.
+Everything in `.github/` is committed, so it can be reviewed. These things live in
+the repository or organisation settings instead; the owner sets them.
 
-## 1. Branch protection on `main`
+## Runner and triggers
 
-| Setting | Value | Why |
-|---|---|---|
-| Require a pull request | on, 1 approval | `CODEOWNERS` does the rest |
-| Require review from Code Owners | on | the critical paths are release decisions |
-| Require status checks | **`CI`** | one name, deliberately |
-| Require branches up to date | on | a merge never tested against `main` is untested |
-| Require conversation resolution | on | |
-| Allow force pushes / deletions | off | |
+All workflows run on the organisation runner (`runs-on: [self-hosted, server-main]`): ephemeral, one job at a time, root-equivalent through the Docker socket. For that reason **no workflow has a `pull_request` or `pull_request_target` trigger**: code from a branch, Dependabot branches included, must not run there before a human has merged it. CI runs on `main` after the merge.
 
-Point the required status check at the job literally called **`CI`** - the
-summary job at the bottom of `ci.yml`. Every matrix combination cannot be listed
-by hand without the list going stale the first time the matrix changes.
+## 1. Branch protection on `main` (owner side)
 
-## 2. Publishing environments
-
-### `pypi`
-
-Create the environment, restrict it to `main` and to tags, then set up
-**trusted publishing** on PyPI:
-
-| Field | Value |
+| Setting | Value |
 |---|---|
-| Owner | `uplytech` |
-| Repository | `licenseclient` |
-| Workflow | `release.yml` |
-| Environment | `pypi` |
+| Require a pull request, 1 approval | on (a single maintainer cannot satisfy it on his own commits; leave off or use a bypass) |
+| Require status checks | `CI` (the summary job at the bottom of `ci.yml`) |
+| Allow force pushes / deletions | off |
 
-No API token, no secret.
+## 2. Releases
 
-### `npm`
-
-Same restrictions, one secret:
+`release.yml` runs on `v*` tags. It needs one organisation secret:
 
 | Secret | What |
 |---|---|
-| `NPM_TOKEN` | A **granular** access token, scoped to `@uplytech/license-client`, read and write, no other package |
+| `RELEASE_SIGNING_KEY` | PEM private key (ECDSA P-256) matching `release-signing.pub` in the repository root |
 
-The package is scoped, so `npm publish` needs `--access public` on the first
-release or it publishes privately. `release.yml` passes it every time.
+The job fails with a clear message when the secret is empty. **Nothing is published to npm or PyPI**; the artefacts, `SHA256SUMS`, `provenance.intoto.json` and the `.sig` files go to the GitHub release only. Publishing to a registry would need a separate, explicit decision.
 
 ## 3. Repository features
 
-| Setting | Value | Why |
-|---|---|---|
-| Discussions | on | `ISSUE_TEMPLATE/config.yml` sends "how do I ...?" there |
-| Wiki, Projects | off | the documentation is in the repository |
-| Default workflow permissions | **read** | every workflow declares what it needs; `security.yml` checks that they all do |
-| Allow Actions to create and approve pull requests | on | Dependabot auto-merge |
-| Dependency graph, Dependabot alerts and security updates | on | |
-| Secret scanning + push protection | on | gitleaks covers the history, this covers the next push |
-| Private vulnerability reporting | on | a second door next to <security@uplytech.de> |
-| Auto-merge | on | `dependabot-auto-merge.yml` needs it |
-| Squash merging only | on | the release notes are built from merged titles |
-
-## 4. Teams
-
-`CODEOWNERS` refers to two teams:
-
-| Team | Owns |
+| Setting | Value |
 |---|---|
-| `@uplytech/packages` | both editions, the tests, day-to-day review |
-| `@uplytech/owners` | `.github/`, the critical paths, CONTRIBUTING, SECURITY, CHANGELOG |
+| Default workflow permissions | **read** (every workflow also declares its own `permissions:`) |
+| Dependency graph, Dependabot alerts and security updates | on |
+| Secret scanning + push protection | on |
+| Private vulnerability reporting | on |
 
-## First run, in order
+## 4. OpenSSF Best Practices badge
 
-1. Create the two teams.
-2. Turn on the repository features in section 3.
-3. Push `main`. `labels.yml` creates the labels on the first push that touches
-   it - or run it by hand from the Actions tab.
-4. Let CI go green once, then add the branch protection rule in section 1.
-5. Set up the two environments in section 2 **before** the first tag, not after.
+Registration at bestpractices.dev needs the owner's login: pending owner registration.

@@ -38,3 +38,9 @@ python/CHANGELOG.md
 typescript/LICENSE
 typescript/README.md
 typescript/CHANGELOG.md
+
+# CI scratch space and release staging (own-runner workflows)
+.ci-tmp/
+release/
+release-notes.md
+scorecard.json

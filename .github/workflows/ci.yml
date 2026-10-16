@@ -1,10 +1,19 @@
 name: CI
 
-# Two editions that must agree, and a package that must survive being published.
+# Two editions that must agree, and a package that must survive being packaged.
 #
 # Every step here can fail, and none of them is allowed a `|| true`. A check
-# that cannot fail is a green tick that says nothing, and after a green tick
-# that says nothing nobody looks any more.
+# that cannot fail is a green tick that says nothing.
+#
+# Runs on the own runner, which is root-equivalent on the host (Docker socket).
+# Pull requests are therefore not validated automatically: code from a branch,
+# Dependabot included, must not run there before a human has read and merged it.
+# Validation happens on main after the merge. Tools run in pinned official images
+# (see .github/scripts/ci-docker.sh); the host has no node, python or java.
+#
+# The Windows and macOS legs of the old matrix are gone: the own runner is
+# Linux only. The libraries touch no filesystem and no clock, so the
+# operating-system dimension bought little; it is not tested any more.
 #
 # What the jobs are for:
 #   meta         one version everywhere, and both editions carrying their files
@@ -12,220 +21,139 @@ name: CI
 #   typescript   the second edition, on every Node it claims to support
 #   vectors      the contract between the editions, checked for drift
 #   package      the artefacts a caller actually installs, installed and used
-#   ci           one required status check the branch protection can point at
+#   ci           one status check that fails whenever anything above did
 
 on:
   push:
-    branches: [main, develop, "release/**"]
-  pull_request:
-    branches: [main, develop]
+    branches: [main]
   workflow_dispatch:
-  # release.yml runs this workflow before it publishes anything. Without this
-  # trigger the call there is a startup error - and only at tag time, where it
-  # helps least.
+  # release.yml runs this workflow before it builds the release.
   workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  # One run per branch. Somebody who pushes three times in a row needs the
-  # result of the third, not of the first.
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  NPM_CONFIG_FUND: "false"
-  NPM_CONFIG_AUDIT: "false"
-
 jobs:
-  # ---------------------------------------------------------------------------
-  # Cheap, and it fails for reasons no test can see.
-  # ---------------------------------------------------------------------------
   meta:
     name: Repository consistency
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: "20"
+          persist-credentials: false
 
-      # Both editions share one version number. A test suite cannot notice that
-      # promise being broken: both suites still pass while npm says 1.2.0 and
-      # PyPI says 1.1.0.
-      - name: One version everywhere
-        run: node .github/scripts/check-versions.mjs
+      - name: Build the Node + Python tool image
+        run: docker build -q -t ci-polyglot:local .github/ci
 
-      # LICENSE and CHANGELOG.md live at the root and are copied into each
-      # edition, because each published artefact has to carry its own. The
-      # copies are gitignored, so on a fresh clone they are simply absent -
-      # which is exactly the state a publish must not happen from.
-      - name: Both editions carry the licence and the changelog
+      - name: Versions, licence, changelog, surface
         run: |
+          bash .github/scripts/ci-docker.sh ci-polyglot:local . <<'SH'
+          # Both editions share one version number. A test suite cannot notice
+          # that promise being broken.
+          node .github/scripts/check-versions.mjs
+          # LICENSE and CHANGELOG.md live at the root and are copied into each
+          # edition; the copies are gitignored.
           node .github/scripts/sync-package-files.mjs
           node .github/scripts/sync-package-files.mjs --check
+          # The shared vectors prove the editions agree about what they compute.
+          # This is the other half: that they agree about what they *offer*.
+          pip install -e ./python
+          node .github/scripts/check-surface.mjs
+          SH
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - run: python -m pip install -e ./python
-
-      # The shared vectors prove the two editions agree about what they
-      # compute. This is the other half: that they agree about what they
-      # *offer*. A method added to one and forgotten in the other is a support
-      # ticket six months later, in whichever language nobody is looking at.
-      - name: Both editions expose the same surface
-        run: node .github/scripts/check-surface.mjs
-
-  # ---------------------------------------------------------------------------
-  # The primary edition. The versions in the classifiers are a promise, and a
-  # promise that is never run on is a guess.
-  # ---------------------------------------------------------------------------
   python:
-    name: Python ${{ matrix.python }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: python
+    name: Python ${{ matrix.python }}
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         python: ["3.11", "3.12", "3.13"]
-        os: [ubuntu-latest]
-        include:
-          # The oldest and the newest supported version on the other two
-          # platforms. A full matrix would buy almost nothing for a library
-          # that touches no filesystem and no clock.
-          - { python: "3.11", os: windows-latest }
-          - { python: "3.13", os: windows-latest }
-          - { python: "3.11", os: macos-latest }
-          - { python: "3.13", os: macos-latest }
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          python-version: ${{ matrix.python }}
-          cache: pip
-          cache-dependency-path: python/pyproject.toml
+          persist-credentials: false
 
-      - name: Install
+      - name: Lint, types, tests with coverage gate, examples
         run: |
-          python -m pip install --upgrade pip
+          bash .github/scripts/ci-docker.sh python:${{ matrix.python }}-slim python <<'SH'
           pip install -e ".[dev]"
-
-      - name: Ruff
-        run: |
           ruff check src tests examples
           ruff format --check src tests examples
-
-      - name: mypy --strict
-        run: mypy
-
-      # The gate lives in pyproject.toml.
-      - name: Tests and coverage gate
-        run: pytest --cov=uplytech_license --cov-report=term-missing --cov-report=xml
-
-      # An example that does not run is documentation that lies.
-      - name: Examples
-        env:
-          PYTHONPATH: src
-        run: |
+          mypy
+          # The coverage gate lives in pyproject.toml.
+          pytest --cov=uplytech_license --cov-report=term-missing --cov-report=xml
+          # An example that does not run is documentation that lies.
           for example in examples/*.py; do
             echo "-- $example"
-            python "$example" > /dev/null
+            PYTHONPATH=src python "$example" > /dev/null
           done
+          SH
 
       - name: Upload coverage
-        if: matrix.python == '3.13' && matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        if: matrix.python == '3.13'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-python
           path: python/coverage.xml
           retention-days: 14
 
-  # ---------------------------------------------------------------------------
-  # The second edition. `engines` names the floor, so the floor is tested.
-  # ---------------------------------------------------------------------------
   typescript:
-    name: Node ${{ matrix.node }} on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: typescript
+    name: Node ${{ matrix.node }}
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         node: ["20", "22", "24"]
-        os: [ubuntu-latest]
-        include:
-          - { node: "20", os: windows-latest }
-          - { node: "24", os: windows-latest }
-          - { node: "20", os: macos-latest }
-          - { node: "24", os: macos-latest }
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: ${{ matrix.node }}
-          cache: npm
-          cache-dependency-path: typescript/package-lock.json
+          persist-credentials: false
 
-      # `npm ci` and not `npm install`: the lockfile is the point. It is also
-      # the reason the lockfile is committed - see the note in .gitignore.
-      - name: Install
-        run: npm ci
-
-      - name: ESLint
-        run: npm run lint
-
-      - name: TypeScript
-        run: npm run typecheck
-
-      - name: Tests and coverage gate
-        run: npm run test:coverage
-
-      - name: Build
-        run: npm run build
+      - name: Lint, types, tests with coverage gate, build
+        run: |
+          bash .github/scripts/ci-docker.sh node:${{ matrix.node }}-bookworm-slim typescript <<'SH'
+          # `npm ci` and not `npm install`: the lockfile is the point.
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm run test:coverage
+          npm run build
+          SH
 
       - name: Upload coverage
-        if: matrix.node == '20' && matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        if: matrix.node == '20'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-typescript
           path: typescript/coverage/lcov.info
           retention-days: 14
 
-  # ---------------------------------------------------------------------------
-  # The contract between the editions.
-  #
-  # shared/testcases/ is generated. If regenerating produces a different file
-  # than the one in the repository, the behaviour of the library changed and
-  # nobody wrote it down. That is a red build on purpose.
-  # ---------------------------------------------------------------------------
   vectors:
     name: Shared vectors
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: python/pyproject.toml
-
-      - run: pip install -e ".[dev]"
-        working-directory: python
+          persist-credentials: false
 
       - name: Regenerate
-        run: python ../shared/scripts/generate_vectors.py
-        working-directory: python
+        run: |
+          bash .github/scripts/ci-docker.sh python:3.12-slim python <<'SH'
+          pip install -e ".[dev]"
+          python ../shared/scripts/generate_vectors.py
+          SH
 
+      # shared/testcases/ is generated. If regenerating produces a different file
+      # than the one in the repository, the behaviour of the library changed and
+      # nobody wrote it down. That is a red build on purpose.
       - name: The vectors in the repository are the ones this code produces
         run: |
           if ! git diff --exit-code --stat -- shared/testcases; then
@@ -240,83 +168,46 @@ jobs:
           fi
           echo "ok - no drift"
 
-  # ---------------------------------------------------------------------------
-  # What a caller installs.
-  #
-  # Everything above runs against the source tree. None of it would notice a
-  # broken `exports` map, a missing py.typed, or a dist that was never built -
-  # the three ways a package that passes every test is still unusable.
-  # ---------------------------------------------------------------------------
   package:
-    name: Publishable artefacts
-    runs-on: ubuntu-latest
+    name: Packageable artefacts
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: typescript/package-lock.json
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: Build the Node + Python tool image
+        run: docker build -q -t ci-polyglot:local .github/ci
 
-      - name: Generate the per-edition licence and changelog
-        run: node .github/scripts/sync-package-files.mjs
-
-      - name: Build and pack the npm package
-        working-directory: typescript
+      # Everything above runs against the source tree. None of it would notice a
+      # broken `exports` map, a missing py.typed, or a dist that was never built.
+      - name: Build, pack, install and use both artefacts
         run: |
-          npm ci
-          npm run build
-          npm pack --pack-destination "$RUNNER_TEMP"
+          bash .github/scripts/ci-docker.sh ci-polyglot:local . <<'SH'
+          node .github/scripts/sync-package-files.mjs
+          (cd typescript && npm ci && npm run build && npm pack --pack-destination "$RUNNER_TEMP")
+          npx --yes @arethetypeswrong/cli@0.18.5 --pack typescript
+          bash .github/scripts/smoke-npm.sh
+          (cd python && python -m pip install --upgrade pip build twine && python -m build --outdir "$RUNNER_TEMP/pydist")
+          python -m twine check "$RUNNER_TEMP"/pydist/*
+          python .github/scripts/check_wheel.py "$RUNNER_TEMP/pydist"
+          bash .github/scripts/smoke-wheel.sh
+          SH
 
-      # Type resolution is the part of a dual-format package that breaks
-      # quietly: the JavaScript loads, and only a consumer's `tsc` complains.
-      - name: Types resolve for every consumer shape
-        run: npx --yes @arethetypeswrong/cli@latest --pack typescript
-
-      - name: Install the tarball and use it
-        run: bash .github/scripts/smoke-npm.sh
-
-      - name: Build the wheel and the sdist
-        working-directory: python
-        run: |
-          python -m pip install --upgrade pip build twine
-          python -m build --outdir "$RUNNER_TEMP/pydist"
-
-      - name: The metadata PyPI will see
-        run: python -m twine check "$RUNNER_TEMP"/pydist/*
-
-      # A wheel without py.typed types as `Any` in every calling project, and
-      # nothing in the test suite can tell.
-      - name: The wheel carries py.typed and the licence
-        run: python .github/scripts/check_wheel.py "$RUNNER_TEMP/pydist"
-
-      - name: Install the wheel and use it
-        run: bash .github/scripts/smoke-wheel.sh
-
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: distributables
           path: |
-            ${{ runner.temp }}/*.tgz
-            ${{ runner.temp }}/pydist/*
+            .ci-tmp/*.tgz
+            .ci-tmp/pydist/*
           retention-days: 14
 
-  # ---------------------------------------------------------------------------
-  # One check to protect the branch with.
-  #
-  # A matrix job cannot be named in branch protection without pinning every
-  # combination by hand, and the pinned list goes stale the first time the
-  # matrix changes. This job stays named "CI" forever and fails whenever
-  # anything above it did.
-  # ---------------------------------------------------------------------------
+  # One status check that stays named "CI" however the matrix changes.
   ci:
     name: CI
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 5
     needs: [meta, python, typescript, vectors, package]
     if: always()
     steps:

@@ -1,20 +1,18 @@
 name: Security
 
-# What "security" means for a library.
+# What "security" means for a library: the supply chain (dependencies, actions,
+# committed secrets). The scheduled run matters more than the push run: a new
+# advisory almost always concerns a dependency that has not changed.
 #
-# LicenseClient holds no long-lived state of its own, so the interesting failures
-# are in the supply chain - the dependencies, the actions, and the secrets
-# somebody might commit - plus the static analysis that finds the bugs a test
-# suite was never written for.
-#
-# The scheduled run matters more here than the push run: a new advisory almost
-# always concerns a dependency that has not changed since the last push.
+# Runs on the own runner, which is root-equivalent on the host (Docker socket).
+# Pull requests are therefore not validated automatically: code from a branch,
+# Dependabot included, must not run there before a human has read and merged it.
+# Validation happens on main after the merge. Tools run in pinned official images
+# (see .github/scripts/ci-docker.sh); the host has no node, python or java.
 
 on:
   push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+    branches: [main]
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:
@@ -29,112 +27,85 @@ concurrency:
 jobs:
   secrets:
     name: Secrets
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The whole history. A token committed three months ago and removed
-          # in the next commit is still a valid token.
+          # The whole history: a token committed three months ago and removed in
+          # the next commit is still a valid token.
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: gitleaks
+        run: docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.24.2 git /repo --redact --exit-code 1
 
   npm-audit:
     name: npm dependencies
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: "20"
-          cache: npm
-          cache-dependency-path: typescript/package-lock.json
+          persist-credentials: false
 
-      - run: npm ci
-        working-directory: typescript
-
-      - name: The npm package's runtime dependencies are the agreed set
-        run: node .github/scripts/check-dependencies.mjs
-
-      # The dev tree is audited too, at a level that is worth acting on. A run
-      # that is red every week because of a transitive advisory in a bundler
-      # gets switched off, and then the real one is missed as well.
-      - name: npm audit
-        run: npm audit --audit-level=high
-        working-directory: typescript
+      - name: Dependency list and npm audit
+        run: |
+          bash .github/scripts/ci-docker.sh node:22-bookworm-slim . <<'SH'
+          (cd typescript && npm ci)
+          # The runtime dependency list is the agreed one
+          node .github/scripts/check-dependencies.mjs
+          # The dev tree is audited at a level worth acting on.
+          (cd typescript && npm audit --audit-level=high)
+          SH
 
   pip-audit:
     name: Python dependencies
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          python-version: "3.12"
+          persist-credentials: false
 
-      - run: pip install pip-audit
-
-      # This package is not dependency-free, and that is a deliberate,
-      # documented exception rather than drift. The check is therefore that the
-      # list is *exactly* what was agreed - a new dependency has to change this
-      # file, which means somebody reviews it.
-      - name: The runtime dependency list is the one that was agreed
-        run: python .github/scripts/check_dependencies.py
-
-      - name: pip-audit
-        run: pip-audit --strict .[dev]
-        working-directory: python
+      - name: Dependency list and pip-audit
+        run: |
+          bash .github/scripts/ci-docker.sh python:3.12-slim . <<'SH'
+          pip install pip-audit
+          # The runtime dependency list is the agreed one
+          python .github/scripts/check_dependencies.py
+          (cd python && pip-audit --strict ".[dev]")
+          SH
 
   osv:
     name: OSV scanner
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # A second opinion on both lockfiles from a different advisory database.
-      - uses: google/osv-scanner-action/osv-scanner-action@v2
-        continue-on-error: true
-        with:
-          scan-args: |-
-            --recursive
-            --format=sarif
-            --output=osv.sarif
-            ./
-
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: osv.sarif
-          category: osv
+      - name: osv-scanner
+        run: docker run --rm -v "$PWD:/src" -w /src ghcr.io/google/osv-scanner:v2.2.2 scan source --recursive ./
 
   actions:
     name: Workflow hygiene
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      # A workflow without a `permissions:` block gets whatever the repository
-      # default is, which is how a linter job ends up able to push to main.
       - name: Every workflow declares its permissions
         run: |
           failed=0
           for file in .github/workflows/*.yml; do
-            if ! grep -q '^permissions:' "$file"; then
-              echo "::error file=$file::no top-level permissions: block"
-              failed=1
-            fi
+            grep -q '^permissions:' "$file" || { echo "::error file=$file::no top-level permissions: block"; failed=1; }
           done
-          [ "$failed" = "0" ] && echo "ok - every workflow declares its permissions"
           exit $failed
 
-      # A typo in a workflow is not caught by anything else in this repository:
-      # it surfaces as a startup error on the run that needed to work.
       - name: actionlint
-        run: |
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
-          ./actionlint -color
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color

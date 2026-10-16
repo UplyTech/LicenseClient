@@ -1,16 +1,17 @@
 name: Docs
 
-# Documentation that is wrong is worse than none.
+# Documentation that is wrong is worse than none: dead links, misspelt
+# identifiers and README examples that no longer run.
 #
-# Three ways it can be wrong are checkable rather than believable: a dead link,
-# a misspelt identifier, and an example in the README that no longer runs. The
-# third matters most - it is the first thing anybody tries.
+# Runs on the own runner, which is root-equivalent on the host (Docker socket).
+# Pull requests are therefore not validated automatically: code from a branch,
+# Dependabot included, must not run there before a human has read and merged it.
+# Validation happens on main after the merge. Tools run in pinned official images
+# (see .github/scripts/ci-docker.sh); the host has no node, python or java.
 
 on:
   push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+    branches: [main]
   schedule:
     # A link dies without anybody here changing anything.
     - cron: "0 5 * * 1"
@@ -26,49 +27,52 @@ concurrency:
 jobs:
   links:
     name: Links
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Dead links
-        uses: gaurav-nelson/github-action-markdown-link-check@v1
-        with:
-          use-quiet-mode: "yes"
-          use-verbose-mode: "yes"
-          config-file: .github/markdown-link-check.json
-          # In a pull request only the changed files, so that somebody else's
-          # site having a hiccup does not hold up a merge. Everything on the
-          # scheduled run.
-          check-modified-files-only: ${{ github.event_name == 'pull_request' && 'yes' || 'no' }}
+        run: |
+          bash .github/scripts/ci-docker.sh node:22-bookworm-slim . <<'SH'
+          for f in $(find . -name '*.md' -not -path '*/node_modules/*' -not -path './.ci-tmp/*'); do
+            npx --yes markdown-link-check@3.15.0 -q -c .github/markdown-link-check.json "$f"
+          done
+          SH
 
   spelling:
     name: Spelling
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-node
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          install: "false"
+          persist-credentials: false
 
-      # Not here to correct prose. The point is the identifier that was
-      # misspelt once and has been called that ever since.
       - name: cspell
-        run: npx --yes cspell@latest --config .github/cspell.json --no-progress --show-suggestions "**"
+        run: |
+          bash .github/scripts/ci-docker.sh node:22-bookworm-slim . <<'SH'
+          npx --yes cspell@10.4.0 --config .github/cspell.json --no-progress --show-suggestions "**"
+          SH
 
   examples:
     name: The README examples still hold
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, server-main]
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-python
-      - uses: ./.github/actions/setup-node
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          build: "true"
+          persist-credentials: false
 
-      # ci.yml runs the files under examples/. This is about the snippets *in*
-      # the README: those are what somebody reads first, and the only
-      # documentation nothing else executes.
+      - name: Build tool image
+        run: docker build -q -t ci-polyglot:local .github/ci
+
       - name: Every imported name exists
-        env:
-          PYTHON: python
-        run: node .github/scripts/check-docs.mjs
+        run: |
+          bash .github/scripts/ci-docker.sh ci-polyglot:local . <<'SH'
+          (cd typescript && npm ci && npm run build)
+          (cd python && pip install -e .)
+          node .github/scripts/check-docs.mjs
+          SH

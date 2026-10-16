@@ -242,3 +242,25 @@ cd Packages/LicenseClient/typescript && npm pack
 
 The committed tarball works offline and in any CI, and `package-lock.json`
 records its checksum. Moving to GitHub Packages later is a one-line change.
+
+## Security and OpenSSF
+
+- **CI** runs on the organisation's own runner after a merge to `main` (`ci.yml`, `quality.yml`, `docs.yml`, `security.yml`, `nightly.yml`). There are no pull-request builds on purpose: the runner is root-equivalent, so code from a branch must not run there before a human has read it. The Windows and macOS legs of the old matrix are gone, because the runner is Linux only.
+- **OpenSSF Scorecard** runs weekly from the official container image (`scorecard.yml`); the JSON result is kept as a workflow artefact. This repository is private, so there is no public Scorecard badge (the badge API serves public repositories only) and no SARIF upload (needs GitHub Advanced Security).
+- **CodeQL** is not run: code scanning on private repositories needs GitHub Advanced Security.
+- **OpenSSF Best Practices badge** (bestpractices.dev): pending owner registration.
+- **Supply chain**: actions pinned to commit SHAs, tool images pinned by tag, Dependabot for npm, pip, Docker and GitHub Actions (weekly, minor and patch grouped), gitleaks and OSV scans on a schedule, [SECURITY.md](./SECURITY.md) with private reporting.
+- **Not achievable here**: branch protection and required reviews are repository settings (owner side); with a single maintainer the Scorecard checks for code review and contributors stay low.
+
+### Releases and how to verify them
+
+A release is created from a `v*` tag by `release.yml`. It builds the npm tarball, the wheel and the sdist, writes `SHA256SUMS` and an in-toto SLSA provenance statement (`provenance.intoto.json`), signs every file with the UplyTech release key (`<file>.sig`, base64 of an ECDSA P-256 / SHA-256 signature) and attaches everything to the GitHub release. Nothing is pushed to npm or PyPI. The public key is [`release-signing.pub`](./release-signing.pub).
+
+```bash
+base64 -d <file>.sig > <file>.sig.der
+openssl dgst -sha256 -verify release-signing.pub -signature <file>.sig.der <file>
+sha256sum -c SHA256SUMS --ignore-missing
+```
+
+The signing key is the organisation secret `RELEASE_SIGNING_KEY`; the release job fails when it is empty instead of publishing unsigned files.
+

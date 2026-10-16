@@ -65,3 +65,21 @@ updates:
       actions:
         patterns: ["*"]
         update-types: [minor, patch]
+
+  # The tool image the CI jobs build (Node + Python in one).
+  - package-ecosystem: docker
+    directory: /.github/ci
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+      include: scope
+    labels: [dependencies, ci]
+    groups:
+      docker:
+        patterns: ["*"]
+        update-types: [minor, patch]
