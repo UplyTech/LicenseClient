@@ -12,8 +12,8 @@ itself.
 
 The authority for the generated files is the API, not this package::
 
-    cd Projekte/Intern/API
-    ./.venv/Scripts/python.exe ../../Packages/LicenseClient/shared/scripts/generate_vectors.py
+    cd 09-projects/01-internal/API
+    ./.venv/Scripts/python.exe ../../07-packages/LicenseClient/shared/scripts/generate_vectors.py
 
 That import direction is deliberate. The server decides what a licence key
 looks like and what it signs; the client library has to follow. Running this
@@ -55,9 +55,9 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - operator error, not a code path
     sys.exit(
         "Run this from the API project so that 'app' is importable:\n"
-        "  cd Projekte/Intern/API\n"
+        "  cd 09-projects/01-internal/API\n"
         "  ./.venv/Scripts/python.exe "
-        "../../Packages/LicenseClient/shared/scripts/generate_vectors.py"
+        "../../07-packages/LicenseClient/shared/scripts/generate_vectors.py"
     )
 
 from cryptography.hazmat.primitives import hashes

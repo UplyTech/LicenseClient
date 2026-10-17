@@ -9,7 +9,7 @@ typescript/         @uplytech/license-client
 python/             uplytech-license-client
 ```
 
-The other end is `Projekte/Intern/API`. It decides the wire format; this
+The other end is `09-projects/01-internal/API`. It decides the wire format; this
 package follows.
 
 ## Setting up
@@ -58,8 +58,8 @@ Almost every change does. The order is:
 2. **Regenerate the vectors**, if one of the four generated files is affected:
 
    ```bash
-   cd Projekte/Intern/API
-   ./.venv/Scripts/python.exe ../../Packages/LicenseClient/shared/scripts/generate_vectors.py
+   cd 09-projects/01-internal/API
+   ./.venv/Scripts/python.exe ../../07-packages/LicenseClient/shared/scripts/generate_vectors.py
    ```
 
 3. **Add hand-written vectors**, if the *behaviour* changes. The vector comes

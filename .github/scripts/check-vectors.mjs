@@ -10,7 +10,7 @@
  * disappears is exactly the kind of drift these files exist to prevent.
  *
  * Some of these files are not produced here but in
- * Projekte/Intern/API - der Server entscheidet ueber das Wire-Format.
+ * 09-projects/01-internal/API: the server decides the wire format.
  * The drift check therefore lives there; what is checked here is that
  * the files are readable and complete.
  */

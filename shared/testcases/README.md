@@ -36,8 +36,8 @@ only prove that an implementation agrees with itself.
 The authority is the **API**, not this package:
 
 ```bash
-cd Projekte/Intern/API
-./.venv/Scripts/python.exe ../../Packages/LicenseClient/shared/scripts/generate_vectors.py
+cd 09-projects/01-internal/API
+./.venv/Scripts/python.exe ../../07-packages/LicenseClient/shared/scripts/generate_vectors.py
 ```
 
 That direction is deliberate. The server decides what a key looks like and what
