@@ -13,9 +13,9 @@ authors:
   - name: UplyTech
     email: dev@uplytech.de
     website: "https://www.uplytech.de"
-repository-code: "https://github.com/uplytech/licenseclient"
-url: "https://github.com/uplytech/licenseclient"
-license: MIT
+repository-code: "https://github.com/UplyTech/LicenseClient"
+url: "https://github.com/UplyTech/LicenseClient"
+license: Apache-2.0
 keywords:
   - uplytech_license
   - uplytech

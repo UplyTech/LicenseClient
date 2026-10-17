@@ -9,6 +9,16 @@ verify signatures against the old serialisation and decrypt their cache with
 the old derivation. A change like that is a new major version and needs a
 migration path, not a changelog bullet.
 
+## [Unreleased]
+
+### Changed
+
+- **Licence: Apache License 2.0** (was MIT). `LICENSE` carries the full Apache text, `NOTICE` the attribution `Copyright 2021-present UplyTech (Tim Hauke, Itzehoe, Germany)` (UplyTech has existed as a community since 2021); both ship in the npm package, the wheel and the sdist. Author fields name UplyTech only.
+- Registry names: `@uplytech/license-client` on npm, `uplytech-license-client` on PyPI.
+- Releases publish to npm and PyPI with Trusted Publishing (OIDC, no registry token) and npm provenance, after the signed GitHub release. Each registry is switched on with a repository variable once its Trusted Publisher exists. Every artefact also gets a GitHub build attestation.
+- CI runs on GitHub-hosted runners, since the repository is public and the organisation runner serves private repositories only. Pull requests are validated again (read-only token, no secrets); CodeQL, dependency review and a published OpenSSF Scorecard are part of the checks.
+- Repository links point to `github.com/UplyTech/LicenseClient`.
+
 ## [2.0.0] — 2026-09-09
 
 The client now enforces the field it was already storing, covers the endpoints
