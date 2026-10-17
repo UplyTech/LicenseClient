@@ -1,39 +1,19 @@
-# Repository settings the workflows assume
+# Repository settings outside git
 
-Everything in `.github/` is committed, so it can be reviewed. These things live in
-the repository or organisation settings instead; the owner sets them.
-
-## Runner and triggers
-
-All workflows run on the organisation runner (`runs-on: [self-hosted, server-main]`): ephemeral, one job at a time, root-equivalent through the Docker socket. For that reason **no workflow has a `pull_request` or `pull_request_target` trigger**: code from a branch, Dependabot branches included, must not run there before a human has merged it. CI runs on `main` after the merge.
-
-## 1. Branch protection on `main` (owner side)
+Settings that cannot be kept in files. The owner sets them once.
 
 | Setting | Value |
-|---|---|
-| Require a pull request, 1 approval | on (a single maintainer cannot satisfy it on his own commits; leave off or use a bypass) |
-| Require status checks | `CI` (the summary job at the bottom of `ci.yml`) |
-| Allow force pushes / deletions | off |
-
-## 2. Releases
-
-`release.yml` runs on `v*` tags. It needs one organisation secret:
-
-| Secret | What |
-|---|---|
-| `RELEASE_SIGNING_KEY` | PEM private key (ECDSA P-256) matching `release-signing.pub` in the repository root |
-
-The job fails with a clear message when the secret is empty. **Nothing is published to npm or PyPI**; the artefacts, `SHA256SUMS`, `provenance.intoto.json` and the `.sig` files go to the GitHub release only. Publishing to a registry would need a separate, explicit decision.
-
-## 3. Repository features
-
-| Setting | Value |
-|---|---|
-| Default workflow permissions | **read** (every workflow also declares its own `permissions:`) |
-| Dependency graph, Dependabot alerts and security updates | on |
-| Secret scanning + push protection | on |
-| Private vulnerability reporting | on |
-
-## 4. OpenSSF Best Practices badge
-
-Registration at bestpractices.dev needs the owner's login: pending owner registration.
+| --- | --- |
+| Visibility | Public |
+| Environment `release` | Required reviewer: the owner. Deployment tags: `v*` only. The npm and PyPI publish jobs run here. |
+| npm Trusted Publisher | Package `@uplytech/license-client`, repository `UplyTech/LicenseClient`, workflow `release.yml`, environment `release` |
+| PyPI Trusted Publisher | Project `uplytech-license-client`, repository `UplyTech/LicenseClient`, workflow `release.yml`, environment `release` |
+| Repository variables | `PUBLISH_NPM` and `PUBLISH_PYPI` = `true`, each only after the Trusted Publisher above exists. Unset, a tag still produces the signed GitHub release and skips the registry. |
+| npm first publish | npm configures a Trusted Publisher in the settings of an existing package. If npmjs.com offers no way to add one before the first version, the owner publishes the first version of `@uplytech/license-client` once by hand from the release tarball (`npm publish <tarball> --access public`, with 2FA) under the npm organisation `uplytech`, then adds the Trusted Publisher and sets `PUBLISH_NPM`. A new Trusted Publisher must see its first successful publish within two days, or it expires. |
+| PyPI first publish | PyPI accepts a pending Trusted Publisher for a project that does not exist yet; no manual upload needed. |
+| Runners | GitHub-hosted (`ubuntu-latest`): the repository is public, the organisation runner group serves private repositories only, and npm Trusted Publishing works on GitHub-hosted runners only. Minutes are free for public repositories. |
+| Organisation secret | `RELEASE_SIGNING_KEY` (visibility: all repositories) |
+| Branch protection on `main` | Require the `CI` check; with a single maintainer, no required approvals |
+| Security | Dependabot alerts and updates, private vulnerability reporting, secret scanning with push protection |
+| Code scanning | Advanced setup (`codeql.yml`); default setup stays off |
+| OpenSSF Best Practices | Register on bestpractices.dev, then add the badge to the README |

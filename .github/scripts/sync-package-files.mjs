@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Copy README.md, LICENSE and CHANGELOG.md from the root into both editions.
+ * Copy README.md, LICENSE, NOTICE and CHANGELOG.md from the root into both editions.
  *
  * There is one readme, one licence and one history for the whole project, but
  * every published artefact has to carry its own copy: `package.json` lists them
@@ -32,7 +32,7 @@ const check = process.argv.includes("--check");
 
 const jobs = [];
 for (const edition of ["python", "typescript"]) {
-  for (const file of ["README.md", "LICENSE", "CHANGELOG.md"]) {
+  for (const file of ["README.md", "LICENSE", "NOTICE", "CHANGELOG.md"]) {
     jobs.push({
       from: join(root, file),
       to: join(root, edition, file),

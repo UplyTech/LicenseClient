@@ -33,9 +33,11 @@ Thumbs.db
 
 # generated copies of the repository-root files (kept so each published artefact carries them)
 python/LICENSE
+python/NOTICE
 python/README.md
 python/CHANGELOG.md
 typescript/LICENSE
+typescript/NOTICE
 typescript/README.md
 typescript/CHANGELOG.md
 

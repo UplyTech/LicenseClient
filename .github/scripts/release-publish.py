@@ -4,8 +4,8 @@
 usage: release-publish.py TAG DIR [NOTES_FILE] [--prerelease]
 
 Reads GITHUB_TOKEN and GITHUB_REPOSITORY from the environment. Uses only the
-standard library, so it runs in a bare python image. Nothing is published to a
-package registry: GitHub release assets are the only distribution channel.
+standard library, so it runs in a bare python image. The registries (npm, PyPI) are
+published by their own jobs in release.yml; this script only creates the GitHub release.
 """
 
 from __future__ import annotations

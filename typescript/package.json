@@ -21,6 +21,7 @@
     "dist",
     "README.md",
     "LICENSE",
+    "NOTICE",
     "CHANGELOG.md"
   ],
   "scripts": {
@@ -44,13 +45,17 @@
     "electron",
     "uplytech"
   ],
-  "author": "UplyTech (Tim Hauke) <dev@uplytech.de>",
-  "license": "MIT",
+  "author": "UplyTech <dev@uplytech.de>",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/UplyTech/LicenseClient.git",
     "directory": "typescript"
   },
+  "bugs": {
+    "url": "https://github.com/UplyTech/LicenseClient/issues"
+  },
+  "homepage": "https://github.com/UplyTech/LicenseClient#readme",
   "engines": {
     "node": ">=20.0.0"
   },

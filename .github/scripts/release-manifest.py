@@ -54,7 +54,7 @@ def main() -> int:
         "predicateType": "https://slsa.dev/provenance/v1",
         "predicate": {
             "buildDefinition": {
-                "buildType": "https://github.com/UplyTech/server-main/runner/workflow@v1",
+                "buildType": "https://actions.github.io/buildtypes/workflow/v1",
                 "externalParameters": {
                     "repository": f"https://github.com/{repository}",
                     "ref": env["GITHUB_REF"],
@@ -65,7 +65,7 @@ def main() -> int:
                 },
             },
             "runDetails": {
-                "builder": {"id": "https://github.com/UplyTech/server-main/runner"},
+                "builder": {"id": "https://github.com/actions/runner/github-hosted"},
                 "metadata": {"invocationId": f"{run}/attempts/{env['GITHUB_RUN_ATTEMPT']}"},
             },
         },
