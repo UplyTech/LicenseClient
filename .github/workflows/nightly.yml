@@ -3,11 +3,11 @@ name: Nightly
 # What is too slow to run on every push: the next runtime versions, mutation
 # testing, and the newest dependencies instead of the locked ones.
 #
-# Runs on the own runner, which is root-equivalent on the host (Docker socket).
-# Pull requests are therefore not validated automatically: code from a branch,
-# Dependabot included, must not run there before a human has read and merged it.
-# Validation happens on main after the merge. Tools run in pinned official images
-# (see .github/scripts/ci-docker.sh); the host has no node, python or java.
+# Public repository: runs on GitHub-hosted runners (free for public repositories;
+# the organisation runner serves private repositories only). Pull
+# requests are validated with a read-only token and without secrets; there is
+# no pull_request_target anywhere. Tools run in pinned official images (see
+# .github/scripts/ci-docker.sh).
 
 on:
   schedule:
@@ -22,7 +22,7 @@ jobs:
   # months before the release is the whole difference.
   future:
     name: ${{ matrix.runtime }} ${{ matrix.version }}
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     continue-on-error: true
     strategy:
@@ -50,7 +50,7 @@ jobs:
   # surviving mutation is a line that looks tested and is not.
   mutation:
     name: Mutation testing
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 90
     continue-on-error: true
     steps:
@@ -71,7 +71,7 @@ jobs:
   # in the lockfile.
   fresh-dependencies:
     name: With the newest dependencies
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     continue-on-error: true
     steps:

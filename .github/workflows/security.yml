@@ -4,14 +4,16 @@ name: Security
 # committed secrets). The scheduled run matters more than the push run: a new
 # advisory almost always concerns a dependency that has not changed.
 #
-# Runs on the own runner, which is root-equivalent on the host (Docker socket).
-# Pull requests are therefore not validated automatically: code from a branch,
-# Dependabot included, must not run there before a human has read and merged it.
-# Validation happens on main after the merge. Tools run in pinned official images
-# (see .github/scripts/ci-docker.sh); the host has no node, python or java.
+# Public repository: runs on GitHub-hosted runners (free for public repositories;
+# the organisation runner serves private repositories only). Pull
+# requests are validated with a read-only token and without secrets; there is
+# no pull_request_target anywhere. Tools run in pinned official images (see
+# .github/scripts/ci-docker.sh).
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   schedule:
     - cron: "0 6 * * 1"
@@ -27,7 +29,7 @@ concurrency:
 jobs:
   secrets:
     name: Secrets
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,7 +44,7 @@ jobs:
 
   npm-audit:
     name: npm dependencies
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -61,7 +63,7 @@ jobs:
 
   pip-audit:
     name: Python dependencies
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -79,7 +81,7 @@ jobs:
 
   osv:
     name: OSV scanner
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,7 +94,7 @@ jobs:
 
   actions:
     name: Workflow hygiene
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

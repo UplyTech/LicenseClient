@@ -1,42 +1,53 @@
 name: Scorecard
 
-# OpenSSF Scorecard on the own runner, from the official image. The JSON result
-# is kept as an artefact. No SARIF upload (that needs GitHub Advanced Security on
-# private repositories) and no public badge (the Scorecard badge API serves
-# public repositories only).
-#
-# Runs on the own runner, which is root-equivalent on the host (Docker socket).
-# Pull requests are therefore not validated automatically: code from a branch,
-# Dependabot included, must not run there before a human has read and merged it.
-# Validation happens on main after the merge. Tools run in pinned official images
-# (see .github/scripts/ci-docker.sh); the host has no node, python or java.
+# OpenSSF Scorecard with the official action. The result is published to the
+# Scorecard API (that is what the README badge reads) and uploaded as SARIF to
+# code scanning.
+# Public repository: runs on GitHub-hosted runners (free for public repositories;
+# the organisation runner serves private repositories only). Pull
+# requests are validated with a read-only token and without secrets; there is
+# no pull_request_target anywhere. Tools run in pinned official images (see
+# .github/scripts/ci-docker.sh).
 
 on:
   push:
     branches: [main]
+  branch_protection_rule:
   schedule:
     - cron: "0 7 * * 1"
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: read-all
 
 jobs:
   analysis:
     name: Analysis
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+      actions: read
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Run Scorecard
-        env:
-          GITHUB_AUTH_TOKEN: ${{ github.token }}
-        run: |
-          docker run --rm -e GITHUB_AUTH_TOKEN gcr.io/openssf/scorecard:v5.2.1 \
-            --repo=github.com/${{ github.repository }} --format=json > scorecard.json
-          head -c 2000 scorecard.json | head -n 12
+        uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: scorecard-results
-          path: scorecard.json
+          path: results.sarif
           retention-days: 30
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4
+        with:
+          sarif_file: results.sarif

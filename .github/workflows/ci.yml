@@ -5,11 +5,11 @@ name: CI
 # Every step here can fail, and none of them is allowed a `|| true`. A check
 # that cannot fail is a green tick that says nothing.
 #
-# Runs on the own runner, which is root-equivalent on the host (Docker socket).
-# Pull requests are therefore not validated automatically: code from a branch,
-# Dependabot included, must not run there before a human has read and merged it.
-# Validation happens on main after the merge. Tools run in pinned official images
-# (see .github/scripts/ci-docker.sh); the host has no node, python or java.
+# Public repository: runs on GitHub-hosted runners (free for public repositories;
+# the organisation runner serves private repositories only). Pull
+# requests are validated with a read-only token and without secrets; there is
+# no pull_request_target anywhere. Tools run in pinned official images (see
+# .github/scripts/ci-docker.sh).
 #
 # The Windows and macOS legs of the old matrix are gone: the own runner is
 # Linux only. The libraries touch no filesystem and no clock, so the
@@ -26,6 +26,8 @@ name: CI
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
   # release.yml runs this workflow before it builds the release.
   workflow_call:
@@ -40,7 +42,7 @@ concurrency:
 jobs:
   meta:
     name: Repository consistency
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -68,7 +70,7 @@ jobs:
 
   python:
     name: Python ${{ matrix.python }}
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -80,8 +82,10 @@ jobs:
           persist-credentials: false
 
       - name: Lint, types, tests with coverage gate, examples
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
         run: |
-          bash .github/scripts/ci-docker.sh python:${{ matrix.python }}-slim python <<'SH'
+          bash .github/scripts/ci-docker.sh "python:${PYTHON_VERSION}-slim" python <<'SH'
           pip install -e ".[dev]"
           ruff check src tests examples
           ruff format --check src tests examples
@@ -105,7 +109,7 @@ jobs:
 
   typescript:
     name: Node ${{ matrix.node }}
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -117,8 +121,10 @@ jobs:
           persist-credentials: false
 
       - name: Lint, types, tests with coverage gate, build
+        env:
+          NODE_VERSION: ${{ matrix.node }}
         run: |
-          bash .github/scripts/ci-docker.sh node:${{ matrix.node }}-bookworm-slim typescript <<'SH'
+          bash .github/scripts/ci-docker.sh "node:${NODE_VERSION}-bookworm-slim" typescript <<'SH'
           # `npm ci` and not `npm install`: the lockfile is the point.
           npm ci
           npm run lint
@@ -137,7 +143,7 @@ jobs:
 
   vectors:
     name: Shared vectors
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -170,7 +176,7 @@ jobs:
 
   package:
     name: Packageable artefacts
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -206,7 +212,7 @@ jobs:
   # One status check that stays named "CI" however the matrix changes.
   ci:
     name: CI
-    runs-on: [self-hosted, server-main]
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [meta, python, typescript, vectors, package]
     if: always()

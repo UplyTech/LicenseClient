@@ -1,0 +1,16 @@
+# Reviewed false positives: the cross-language test vectors need a fixed Ed25519
+# key pair and sample licence keys. The key pair is test material, generated for
+# the vectors and used nowhere else; it signs nothing real.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test key pair and sample licence keys of the shared test vectors"
+paths = [
+  '''shared/testcases/crypto\.json''',
+  '''shared/scripts/generate_vectors\.py''',
+  '''typescript/tests/units\.test\.ts''',
+  '''typescript/tests/extended\.test\.ts''',
+  '''python/tests/test_client\.py''',
+  '''python/tests/test_extended\.py''',
+]
