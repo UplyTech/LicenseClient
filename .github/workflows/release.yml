@@ -12,11 +12,14 @@ name: Release
 #
 # Only the publishing jobs get id-token: write. Both registries use Trusted
 # Publishing (OIDC): no long-lived registry token exists anywhere.
-# The publish jobs run in the protected environment "release" and only when
+# The publish jobs run in the environment "release" (v* tags only, the owner
+# approves each deployment) and only when
 # the repository variables PUBLISH_NPM / PUBLISH_PYPI are "true", which the
 # owner sets once the Trusted Publisher is configured on the registry (see
 # .github/SETTINGS.md). Without them a tag still produces the signed GitHub
-# release. Tags count only when the tagged commit is on main.
+# release. Tags count only when the tagged commit is on main. There is no
+# manual trigger on purpose: a re-run against another ref would let verify
+# test one commit while build publishes a different one.
 #
 # GitHub-hosted runners: this repository is public, and the organisation runner
 # does not serve public repositories. npm Trusted Publishing also only works on
@@ -24,11 +27,6 @@ name: Release
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Existing tag to release, e.g. v1.2.0"
-        required: true
 
 permissions:
   contents: read
@@ -55,17 +53,14 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag || github.ref }}
           # The whole history, so the next step can prove the tag sits on main.
           fetch-depth: 0
           persist-credentials: false
 
       - name: Resolve the tag
         id: tag
-        env:
-          INPUT_TAG: ${{ inputs.tag }}
         run: |
-          tag="${INPUT_TAG:-${GITHUB_REF#refs/tags/}}"
+          tag="${GITHUB_REF#refs/tags/}"
           # Strict semver, so a tag name can never carry shell or path characters further on.
           if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
             echo "::error::'$tag' is not a v<major>.<minor>.<patch>[-pre] tag"
@@ -119,7 +114,7 @@ jobs:
         run: |
           docker run --rm -v "$PWD:$PWD" -w "$PWD" \
             -e GITHUB_REPOSITORY -e GITHUB_REF -e GITHUB_SHA -e GITHUB_WORKFLOW_REF -e GITHUB_RUN_ID -e GITHUB_RUN_ATTEMPT \
-            python:3.12-slim python .github/scripts/release-manifest.py release
+            python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159 python .github/scripts/release-manifest.py release
 
       - name: Sign
         env:
@@ -172,7 +167,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag || github.ref }}
           persist-credentials: false
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
@@ -215,10 +209,13 @@ jobs:
           name: release
           path: release
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
+          # Nothing is installed here, and a release job must not read a cache
+          # another workflow could have written.
+          package-manager-cache: false
 
       # Trusted Publishing needs npm 11.5.1 or newer; Node 24 ships it.
       # A pre-release goes to the "next" dist-tag, never to "latest".

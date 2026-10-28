@@ -5,7 +5,7 @@ Settings that cannot be kept in files. The owner sets them once.
 | Setting | Value |
 | --- | --- |
 | Visibility | Public |
-| Environment `release` | Required reviewer: the owner. Deployment tags: `v*` only. The npm and PyPI publish jobs run here. |
+| Environment `release` | Required reviewer: the owner (`VectoDE`). Deployment tags: `v*` only. Set up on 2026-10-28. The npm and PyPI publish jobs run here. |
 | npm Trusted Publisher | Package `@uplytech/license-client`, repository `UplyTech/LicenseClient`, workflow `release.yml`, environment `release` |
 | PyPI Trusted Publisher | Project `uplytech-license-client`, repository `UplyTech/LicenseClient`, workflow `release.yml`, environment `release` |
 | Repository variables | `PUBLISH_NPM` and `PUBLISH_PYPI` = `true`, each only after the Trusted Publisher above exists. Unset, a tag still produces the signed GitHub release and skips the registry. |
