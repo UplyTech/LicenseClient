@@ -57,7 +57,7 @@
   },
   "homepage": "https://github.com/UplyTech/LicenseClient#readme",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
