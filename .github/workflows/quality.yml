@@ -38,7 +38,7 @@ jobs:
           files=$(git ls-files '*.sh')
           [ -n "$files" ] || { echo "::error::No shell scripts found - then this job checks nothing."; exit 1; }
           # shellcheck disable=SC2086
-          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.10.0 --severity=warning $files
+          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.10.0@sha256:2097951f02e735b613f4a34de20c40f937a6c8f18ecb170612c88c34517221fb --severity=warning $files
 
       - name: Every script stops on an error
         run: |
@@ -62,7 +62,7 @@ jobs:
 
       - name: yamllint
         run: |
-          bash .github/scripts/ci-docker.sh python:3.12-slim . <<'SH'
+          bash .github/scripts/ci-docker.sh python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159 . <<'SH'
           pip install --quiet yamllint==1.35.1
           yamllint --strict -c .github/yamllint.yaml .github/
           SH
@@ -78,7 +78,7 @@ jobs:
 
       - name: markdownlint
         run: |
-          bash .github/scripts/ci-docker.sh node:22-bookworm-slim . <<'SH'
+          bash .github/scripts/ci-docker.sh node:22-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da . <<'SH'
           npx --yes markdownlint-cli2@0.23.3
           SH
 
@@ -117,7 +117,7 @@ jobs:
 
       - name: Cyclomatic complexity
         run: |
-          bash .github/scripts/ci-docker.sh python:3.12-slim python <<'SH'
+          bash .github/scripts/ci-docker.sh python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159 python <<'SH'
           pip install --quiet radon
           radon cc src --show-complexity --average --order SCORE
           # Grade D is a function nobody can hold in their head any more.
@@ -148,4 +148,4 @@ jobs:
           exit $failed
 
       - name: actionlint
-        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 -color

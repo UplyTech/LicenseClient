@@ -75,7 +75,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.12", "3.13"]
+        # Images pinned by digest; Dependabot cannot see a matrix, so bump by hand.
+        include:
+          - { python: "3.11", image: "python:3.11-slim@sha256:673719e071ecf27434fd2635bbd8d00f49f4fdd81f243143438a42ced8bedf60" }
+          - { python: "3.12", image: "python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159" }
+          - { python: "3.13", image: "python:3.13-slim@sha256:2d44738ebf4ce5f63b9d9ea871e9c7cfdc0426f7b0c97cac915fd88ded1d86bb" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -83,9 +87,9 @@ jobs:
 
       - name: Lint, types, tests with coverage gate, examples
         env:
-          PYTHON_VERSION: ${{ matrix.python }}
+          IMAGE: ${{ matrix.image }}
         run: |
-          bash .github/scripts/ci-docker.sh "python:${PYTHON_VERSION}-slim" python <<'SH'
+          bash .github/scripts/ci-docker.sh "${IMAGE}" python <<'SH'
           pip install -e ".[dev]"
           ruff check src tests examples
           ruff format --check src tests examples
@@ -114,7 +118,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ["20", "22", "24"]
+        # Node 20 is end-of-life and the test toolchain (Vitest 5) needs 22.12+.
+        include:
+          - { node: "22", image: "node:22-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da" }
+          - { node: "24", image: "node:24-bookworm-slim@sha256:be8204d4bd327363357f532187b752ff62759c31bedf98e9e18fc08c9cbd605c" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -122,9 +129,9 @@ jobs:
 
       - name: Lint, types, tests with coverage gate, build
         env:
-          NODE_VERSION: ${{ matrix.node }}
+          IMAGE: ${{ matrix.image }}
         run: |
-          bash .github/scripts/ci-docker.sh "node:${NODE_VERSION}-bookworm-slim" typescript <<'SH'
+          bash .github/scripts/ci-docker.sh "${IMAGE}" typescript <<'SH'
           # `npm ci` and not `npm install`: the lockfile is the point.
           npm ci
           npm run lint
@@ -134,7 +141,7 @@ jobs:
           SH
 
       - name: Upload coverage
-        if: matrix.node == '20'
+        if: matrix.node == '22'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-typescript
@@ -152,7 +159,7 @@ jobs:
 
       - name: Regenerate
         run: |
-          bash .github/scripts/ci-docker.sh python:3.12-slim python <<'SH'
+          bash .github/scripts/ci-docker.sh python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159 python <<'SH'
           pip install -e ".[dev]"
           python ../shared/scripts/generate_vectors.py
           SH
