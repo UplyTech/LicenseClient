@@ -13,11 +13,14 @@ migration path, not a changelog bullet.
 
 ### Changed
 
-- **Licence: Apache License 2.0** (was MIT). `LICENSE` carries the full Apache text, `NOTICE` the attribution `Copyright 2021-present UplyTech (Tim Hauke, Itzehoe, Germany)` (UplyTech has existed as a community since 2021); both ship in the npm package, the wheel and the sdist. Author fields name UplyTech only.
+- **Licence: Apache License 2.0** (was MIT). `LICENSE` carries the full Apache text, `NOTICE` the attribution `Copyright (c) 2021-present UplyTech` (UplyTech has existed as a community since 2021); both ship in the npm package, the wheel and the sdist. Author fields name UplyTech only.
 - Registry names: `@uplytech/license-client` on npm, `uplytech-license-client` on PyPI.
 - Releases publish to npm and PyPI with Trusted Publishing (OIDC, no registry token) and npm provenance, after the signed GitHub release. Each registry is switched on with a repository variable once its Trusted Publisher exists. Every artefact also gets a GitHub build attestation.
 - CI runs on GitHub-hosted runners, since the repository is public and the organisation runner serves private repositories only. Pull requests are validated again (read-only token, no secrets); CodeQL, dependency review and a published OpenSSF Scorecard are part of the checks.
 - Repository links point to `github.com/UplyTech/LicenseClient`.
+- `NOTICE` names the licensor in full: UplyTech, Tim Hauke, Albert-Schweitzer-Ring 42, 25524 Itzehoe, Germany. Python metadata uses the PEP 639 fields (`license = "Apache-2.0"`, `license-files`); the wheel carries `LICENSE` and `NOTICE` under `licenses/`.
+- Test toolchain: Vitest 5, ESLint 9 with a flat config, typescript-eslint 8. This clears the advisories in the old Vitest/Vite/esbuild dev tree (none of it reached a caller). The test matrix runs Node 22 and 24; Node 20 is end-of-life and Vitest 5 needs 22.12 or newer.
+- Releases start only from a pushed `v*` tag on `main`; the manual trigger is gone. The registry jobs run in the environment `release` (only `v*` tags, the owner approves). Tool images in CI are pinned by digest. The Python dependency audit runs against the pinned dev environment and fails on any finding.
 
 ## [2.0.0] — 2026-09-09
 

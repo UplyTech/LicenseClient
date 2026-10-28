@@ -1,16 +1,21 @@
-# Reviewed false positives: the cross-language test vectors need a fixed Ed25519
-# key pair and sample licence keys. The key pair is test material, generated for
-# the vectors and used nowhere else; it signs nothing real.
+# Reviewed false positives, allowed by value rather than by path, so a real
+# secret added to one of the test files is still caught.
+#
+# The cross-language test vectors need fixed key material: the Ed25519 test key
+# pair (two private seeds), the keys the vectors expect to derive from it, and
+# one sample licence key. All of it was generated for the vectors, is public in
+# this repository on purpose, and signs nothing real.
 [extend]
 useDefault = true
 
-[allowlist]
-description = "Test key pair and sample licence keys of the shared test vectors"
-paths = [
-  '''shared/testcases/crypto\.json''',
-  '''shared/scripts/generate_vectors\.py''',
-  '''typescript/tests/units\.test\.ts''',
-  '''typescript/tests/extended\.test\.ts''',
-  '''python/tests/test_client\.py''',
-  '''python/tests/test_extended\.py''',
+[[allowlists]]
+description = "Test key material of the shared test vectors"
+regexTarget = "secret"
+regexes = [
+  '''^cJ3aJ_6yBBqfzKQ9E-mFO-tLp-mCOm9AKKB7WmpTb2Q$''',
+  '''^8bYCRVFVAO3vSlaXfeBSKEsBmzAaosyGZ_35VKnDlDA$''',
+  '''^L9zc1Kd7q\+9Pn8MYlhT4/abPE0WvPFSVBGcTGrrzVDg=$''',
+  '''^lK9WADmOuqOHPfF8eIlvZpehZXy0f0uBa/pf6dafPLM=$''',
+  '''^bpjosssGDs0MK4B6TlNRVq68Tqubp/vpM6CH3MZEX4c=$''',
+  '''^ULT-TPM-3F7K9-2QW8M-XZ4RB-W$''',
 ]

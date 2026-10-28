@@ -1,5 +1,6 @@
 # LicenseClient
 
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/UplyTech/LicenseClient/badge)](https://scorecard.dev/viewer/?uri=github.com/UplyTech/LicenseClient)
 
 The client half of the UplyTech licensing system, in two languages with one
@@ -251,7 +252,7 @@ pip install uplytech-license-client  # Python
 
 ### Releases and how to verify them
 
-A release is created from a `v*` tag by `release.yml`: tests, build, signature, the GitHub release, then the registries. The registry jobs run in the protected environment `release` and use Trusted Publishing (OIDC), so no long-lived registry token exists. Each registry is switched on separately with the repository variables `PUBLISH_NPM` and `PUBLISH_PYPI` once its Trusted Publisher is configured ([.github/SETTINGS.md](./.github/SETTINGS.md)); without them a tag still produces the signed GitHub release. Only a tag on a commit that is on `main` is released.
+A release is created from a `v*` tag by `release.yml`: tests, build, signature, the GitHub release, then the registries. The registry jobs run in the environment `release`, which accepts only `v*` tags and waits for the owner's approval, and use Trusted Publishing (OIDC), so no long-lived registry token exists. Each registry is switched on separately with the repository variables `PUBLISH_NPM` and `PUBLISH_PYPI` once its Trusted Publisher is configured ([.github/SETTINGS.md](./.github/SETTINGS.md)); without them a tag still produces the signed GitHub release. Only a tag on a commit that is on `main` is released.
 
 - **npm**: `@uplytech/license-client`, published with `npm publish --provenance`. Check with `npm audit signatures` or on the package page ("Built and signed on GitHub Actions").
 - **PyPI**: `uplytech-license-client`, published with `pypa/gh-action-pypi-publish` (PEP 740 attestations included).
@@ -273,4 +274,4 @@ The signing key is the organisation secret `RELEASE_SIGNING_KEY`; the release jo
 
 Apache License 2.0. See [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
 
-Copyright 2021-present UplyTech.
+Copyright (c) 2021-present UplyTech. UplyTech has existed as a community since 2021.

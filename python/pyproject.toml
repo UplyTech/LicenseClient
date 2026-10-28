@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.25"]
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
@@ -7,7 +7,8 @@ name = "uplytech-license-client"
 version = "2.0.0"
 description = "Client half of the UplyTech licence system: offline key validation, device fingerprinting, activation, heartbeat, Ed25519-signed answers and an encrypted offline cache."
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.11"
 authors = [{ name = "UplyTech", email = "dev@uplytech.de" }]
 maintainers = [{ name = "UplyTech", email = "dev@uplytech.de" }]
@@ -25,7 +26,6 @@ keywords = [
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
