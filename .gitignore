@@ -31,14 +31,14 @@ coverage/
 Thumbs.db
 *.log
 
-# generated copies of the repository-root files (kept so each published artefact carries them)
+# generated copies of the repository-root files (kept so each published artefact carries them).
+# The README copies are committed: hatchling needs python/README.md for every
+# `pip install -e`, and most CI jobs install without running the sync first.
 python/LICENSE
 python/NOTICE
-python/README.md
 python/CHANGELOG.md
 typescript/LICENSE
 typescript/NOTICE
-typescript/README.md
 typescript/CHANGELOG.md
 
 # CI scratch space and release staging (own-runner workflows)
