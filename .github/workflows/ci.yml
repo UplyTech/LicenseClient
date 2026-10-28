@@ -19,7 +19,7 @@ name: CI
 #   meta         one version everywhere, and both editions carrying their files
 #   python       the primary edition, on every Python it claims to support
 #   typescript   the second edition, on every Node it claims to support
-#   vectors      the contract between the editions, checked for drift
+#   vectors      the contract between the editions, well-formed (regenerated in the API)
 #   package      the artefacts a caller actually installs, installed and used
 #   ci           one status check that fails whenever anything above did
 
@@ -148,38 +148,35 @@ jobs:
           path: typescript/coverage/lcov.info
           retention-days: 14
 
+  # The four generated vector files come from the API's own modules (see
+  # shared/scripts/generate_vectors.py): the server decides what a key looks like
+  # and what it signs. The API lives in a private repository, so this public
+  # repository cannot regenerate them; drift against the server has to be checked
+  # where the authority is. Here the vectors are held to what can be proven
+  # without it: every file parses, and both editions pass all of them (the python
+  # and typescript jobs above run the shared-vector suites).
   vectors:
     name: Shared vectors
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Regenerate
+      - name: Every vector file is valid JSON
         run: |
-          bash .github/scripts/ci-docker.sh python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159 python <<'SH'
-          pip install -e ".[dev]"
-          python ../shared/scripts/generate_vectors.py
+          bash .github/scripts/ci-docker.sh python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159 . <<'SH'
+          python - <<'PY'
+          import json, pathlib, sys
+          files = sorted(pathlib.Path("shared/testcases").glob("*.json"))
+          if not files:
+              sys.exit("::error::no vector files found")
+          for f in files:
+              json.loads(f.read_text(encoding="utf-8"))
+              print("ok -", f)
+          PY
           SH
-
-      # shared/testcases/ is generated. If regenerating produces a different file
-      # than the one in the repository, the behaviour of the library changed and
-      # nobody wrote it down. That is a red build on purpose.
-      - name: The vectors in the repository are the ones this code produces
-        run: |
-          if ! git diff --exit-code --stat -- shared/testcases; then
-            echo "::error::Regenerating the shared vectors changed them."
-            echo "::error::That means the behaviour of the library changed."
-            echo "::error::Review the diff, record it in CHANGELOG.md with the"
-            echo "::error::version bump CONTRIBUTING.md asks for, and commit the"
-            echo "::error::regenerated files. Never regenerate to make a failing"
-            echo "::error::test pass."
-            git diff -- shared/testcases
-            exit 1
-          fi
-          echo "ok - no drift"
 
   package:
     name: Packageable artefacts
