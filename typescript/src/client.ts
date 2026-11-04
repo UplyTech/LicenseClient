@@ -264,7 +264,6 @@ export class LicenseClient {
     }
 
     let discarded: 'unreadable' | 'wrong-format' | 'wrong-machine' | 'corrupt' = 'corrupt';
-    let detail = '';
     try {
       const container = JSON.parse(Buffer.from(raw).toString('utf8')) as CacheContainer;
       if (container?.v !== CACHE_FORMAT) {
@@ -289,7 +288,7 @@ export class LicenseClient {
       // the activation dialog, which is the only useful thing to do about a
       // cache that will not open. The event is how a support engineer finds out
       // which of the four reasons it was, on a machine they cannot debug.
-      detail = error instanceof Error ? error.message : String(error);
+      const detail = error instanceof Error ? error.message : String(error);
       emit(this.options.onEvent, { type: 'cache.discarded', reason: discarded, detail });
       await this.storage.clear();
       this.cache = null;
