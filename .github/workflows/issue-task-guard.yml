@@ -1,0 +1,178 @@
+# Issue task guard.
+#
+# An issue may only be closed as completed when every task in its body is
+# done and backed by evidence, and every sub-issue is closed:
+#
+#   - an unchecked box "- [ ]" anywhere in the body (including "## Aufgaben")
+#     reopens the issue;
+#   - a checked box "- [x]" without a link in the same line (URL, commit SHA,
+#     #123 or owner/repo#123) counts as open as well;
+#   - an open sub-issue reopens the issue.
+#
+# Closing as "not planned" or "duplicate" is allowed, but needs a comment
+# that explains why (posted up to 24 hours before closing or afterwards).
+# Without one the issue is reopened.
+#
+# The guard comments on the issue with what is still missing. It never
+# touches code; the GitHub API is used through actions/github-script, so
+# nothing but the runner's bundled Node is needed.
+#
+# The logic between the "guard logic" markers is tested locally by
+# test-guard.js, which loads it straight from this file.
+
+name: Issue task guard
+
+on:
+  issues:
+    types: [closed]
+
+permissions: {}
+
+concurrency:
+  group: issue-task-guard-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: Check tasks before closing
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write # read the issue, its comments and sub-issues; reopen and comment
+    steps:
+      - name: Reopen when tasks or sub-issues are still open
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            // --- guard logic start ---
+            const MARKER = '<!-- issue-task-guard -->';
+            const LOOKBACK_MS = 24 * 60 * 60 * 1000;
+            const MIN_JUSTIFICATION = 10;
+            const BOX = /^\s*(?:[-*+]|\d+[.)])\s+\[([ xX])\](?:\s+(.*))?$/;
+            const URL_RE = /https?:\/\/[^\s<>()\]]+/i;
+            const REF_RE = /(?:^|[\s(\[])(?:[\w.-]+\/[\w.-]+)?#\d+\b/;
+            const SHA_RE = /(?:^|[\s(\[`@])([0-9a-f]{7,40})(?=$|[\s).,;:\]`])/gi;
+
+            function stripComments(text) {
+              return String(text || '').replace(/<!--[\s\S]*?-->/g, '');
+            }
+
+            function hasEvidence(line) {
+              if (URL_RE.test(line) || REF_RE.test(line)) return true;
+              for (const m of line.matchAll(SHA_RE)) {
+                // A SHA has letters and digits; plain numbers or words are not one.
+                if (/[0-9]/.test(m[1]) && /[a-f]/i.test(m[1])) return true;
+              }
+              return false;
+            }
+
+            function findOpenTasks(body) {
+              const open = [];
+              let fence = null;
+              for (const raw of stripComments(body).split(/\r?\n/)) {
+                const f = raw.match(/^\s*(`{3,}|~{3,})/);
+                if (f) {
+                  if (!fence) fence = f[1][0];
+                  else if (f[1][0] === fence) fence = null;
+                  continue;
+                }
+                if (fence) continue;
+                const m = raw.match(BOX);
+                if (!m) continue;
+                const text = (m[2] || '').trim();
+                if (m[1] === ' ') open.push({ text, reason: 'unchecked' });
+                else if (!hasEvidence(text)) open.push({ text, reason: 'no-evidence' });
+              }
+              return open;
+            }
+
+            function hasJustification(comments, closedAt) {
+              const since = Date.parse(closedAt) - LOOKBACK_MS;
+              return (comments || []).some((c) => {
+                if (!c || !c.user || c.user.type === 'Bot') return false;
+                const body = String(c.body || '');
+                if (body.includes(MARKER)) return false;
+                if (stripComments(body).trim().length < MIN_JUSTIFICATION) return false;
+                return Date.parse(c.created_at) >= since;
+              });
+            }
+
+            function decide({ issue, comments, subIssues }) {
+              const reason = issue.state_reason || 'completed';
+              if (reason === 'not_planned' || reason === 'duplicate') {
+                const ok = hasJustification(comments, issue.closed_at);
+                return { action: ok ? 'allow' : 'reopen', reason, missingJustification: !ok, openTasks: [], openSubIssues: [] };
+              }
+              const openTasks = findOpenTasks(issue.body);
+              const openSubIssues = (subIssues || []).filter((s) => s && s.state === 'open');
+              const blocked = openTasks.length > 0 || openSubIssues.length > 0;
+              return { action: blocked ? 'reopen' : 'allow', reason, missingJustification: false, openTasks, openSubIssues };
+            }
+
+            function buildComment(d) {
+              const lines = [MARKER, '**Wieder geöffnet:** Das Issue ist noch nicht fertig.', ''];
+              if (d.missingJustification) {
+                lines.push(
+                  'Es wurde als „nicht geplant“ bzw. „Duplikat“ geschlossen, aber ohne Begründung.',
+                  'Bitte einen Kommentar mit dem Grund schreiben (bei Duplikaten mit Verweis auf das andere Issue) und dann erneut schließen.'
+                );
+                return lines.join('\n');
+              }
+              const unchecked = d.openTasks.filter((t) => t.reason === 'unchecked');
+              const noEvidence = d.openTasks.filter((t) => t.reason === 'no-evidence');
+              const item = (t) => `- ${t.text ? t.text.replace(/\s+/g, ' ') : '(ohne Text)'}`;
+              if (unchecked.length) {
+                lines.push('**Offene Aufgaben:**', ...unchecked.map(item), '');
+              }
+              if (noEvidence.length) {
+                lines.push(
+                  '**Abgehakt, aber ohne Nachweis** (Link auf Commit, PR, Actions-Run oder URL in derselben Zeile fehlt):',
+                  ...noEvidence.map(item),
+                  ''
+                );
+              }
+              if (d.openSubIssues.length) {
+                lines.push('**Offene Sub-Issues:**', ...d.openSubIssues.map((s) => `- ${s.html_url || '#' + s.number} ${s.title || ''}`.trimEnd()), '');
+              }
+              lines.push('Erst erledigen bzw. belegen, dann schließen. Nicht umsetzbare Issues als „nicht geplant“ mit Begründung schließen.');
+              return lines.join('\n');
+            }
+            // --- guard logic end ---
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.issue.number;
+
+            const loadComments = () =>
+              github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+
+            const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number });
+            if (issue.state !== 'closed') {
+              core.info('The issue is open again; nothing to do.');
+              return;
+            }
+
+            let subIssues = [];
+            try {
+              subIssues = await github.paginate('GET /repos/{owner}/{repo}/issues/{issue_number}/sub_issues', {
+                owner, repo, issue_number, per_page: 100,
+              });
+            } catch (error) {
+              if (error.status !== 404) throw error;
+              core.warning('Sub-issues endpoint returned 404; treating as no sub-issues.');
+            }
+
+            let comments = await loadComments();
+            let d = decide({ issue, comments, subIssues });
+            if (d.action === 'reopen' && d.missingJustification) {
+              // "Close with comment" can land the comment just after the close event.
+              await new Promise((resolve) => setTimeout(resolve, 60000));
+              comments = await loadComments();
+              d = decide({ issue, comments, subIssues });
+            }
+
+            core.info(`state_reason=${d.reason} action=${d.action} openTasks=${d.openTasks.length} openSubIssues=${d.openSubIssues.length}`);
+            if (d.action === 'allow') return;
+
+            await github.rest.issues.update({ owner, repo, issue_number, state: 'open' });
+            await github.rest.issues.createComment({ owner, repo, issue_number, body: buildComment(d) });
+            core.notice(`Issue #${issue_number} reopened by the task guard.`);
